@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Expiry Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e13;--surface:#111720;--surface2:#1a2230;--border:#252f3e;
+  --accent:#00e5a0;--accent2:#ff6b35;--warn:#ffd60a;--danger:#ff4757;
+  --text:#e8f0f8;--muted:#6b7a8d;--radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 60% 40% at 15% 10%,rgba(0,229,160,.07) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 40% at 85% 90%,rgba(255,107,53,.05) 0%,transparent 60%);
+  pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:20px 16px 80px;}
+header{text-align:center;padding:36px 0 28px;}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;}
+.logo-icon{font-size:2.6rem;filter:drop-shadow(0 0 20px rgba(0,229,160,.6));}
+header h1{font-family:'Syne',sans-serif;font-size:clamp(1.9rem,4vw,2.9rem);font-weight:800;letter-spacing:-1.5px;
+  background:linear-gradient(130deg,var(--accent) 0%,#00c4d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+header p{color:var(--muted);font-size:.9rem;margin-top:4px;}
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto;}
+.tab-btn{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px 18px;
+  border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:9px;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--accent);color:#0a0e13;}
+.tab-btn:hover:not(.active){color:var(--text);background:var(--surface2);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;}
+.card-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:14px;color:var(--accent);display:flex;align-items:center;gap:8px;}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 24px;
+  text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;background:var(--surface2);}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(0,229,160,.05);}
+.upload-zone h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:5px;}
+.upload-zone p{color:var(--muted);font-size:.83rem;}
+.upload-btn-label{display:inline-block;margin-top:14px;background:var(--accent);color:#0a0e13;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;padding:10px 22px;border-radius:9px;cursor:pointer;transition:all .2s;}
+.upload-btn-label:hover{background:#00ffb3;transform:translateY(-1px);}
+.upload-icon{font-size:2.8rem;margin-bottom:10px;}
+#billInput,#changeInput{display:none;}
+.preview-box{display:none;margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.preview-box img{max-width:100%;max-height:300px;width:100%;object-fit:contain;display:block;background:#0d1520;}
+.preview-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);}
+.prev-name{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;}
+.btn{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;padding:10px 20px;
+  border:none;border-radius:9px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:var(--accent);color:#0a0e13;}
+.btn-primary:hover{background:#00ffb3;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,229,160,.35);}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:rgba(255,71,87,.12);color:var(--danger);border:1px solid rgba(255,71,87,.25);}
+.btn-danger:hover{background:rgba(255,71,87,.22);}
+.btn-sm{padding:6px 13px;font-size:.78rem;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+.btn-wa{background:#25d366;color:#fff;border:none;}
+.btn-wa:hover{background:#20ba5a;transform:translateY(-1px);}
+.btn-sms{background:#3b5bdb;color:#fff;border:none;}
+.btn-sms:hover{background:#2f4ac5;transform:translateY(-1px);}
+.btn-email{background:#e74c3c;color:#fff;border:none;}
+.btn-email:hover{background:#c0392b;transform:translateY(-1px);}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:.88rem;}
+thead th{background:var(--surface2);padding:11px 14px;text-align:left;
+  font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;}
+tbody tr{border-top:1px solid var(--border);transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+tbody td{padding:10px 14px;vertical-align:middle;}
+input[type="date"],input[type="number"],input[type="text"],input[type="tel"],input[type="email"],select,textarea{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:7px 11px;font-size:.86rem;font-family:'DM Sans',sans-serif;
+  outline:none;transition:border .2s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:80px;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dot-ok{background:var(--accent);box-shadow:0 0 6px rgba(0,229,160,.5);}
+.dot-warn{background:var(--warn);box-shadow:0 0 6px rgba(255,214,10,.5);}
+.dot-danger{background:var(--danger);box-shadow:0 0 6px rgba(255,71,87,.5);}
+.dot-none{background:var(--muted);}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;text-align:center;}
+.stat-num{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;}
+.stat-label{color:var(--muted);font-size:.75rem;margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
+.stat-ok .stat-num{color:var(--accent);}
+.stat-warn .stat-num{color:var(--warn);}
+.stat-danger .stat-num{color:var(--danger);}
+.alert-banner{border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;font-size:.87rem;line-height:1.5;}
+.alert-danger{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);color:#ff8a94;}
+.alert-warn{background:rgba(255,214,10,.07);border:1px solid rgba(255,214,10,.25);color:#ffd60a;}
+.alert-ok{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.25);color:var(--accent);}
+.alert-info{background:rgba(0,188,212,.06);border:1px solid rgba(0,188,212,.2);color:#4dd9f0;font-size:.82rem;line-height:1.7;border-radius:10px;padding:12px 16px;}
+.ocr-wrap{display:none;margin-top:14px;}
+.ocr-bar-bg{background:var(--surface2);border-radius:999px;height:8px;overflow:hidden;margin:8px 0 4px;}
+.ocr-bar{height:100%;background:linear-gradient(90deg,var(--accent),#00c4d4);border-radius:999px;transition:width .4s;width:0%;}
+.ocr-txt{font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:6px;}
+.ocr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.ocr-chip{background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.18);border-radius:8px;padding:3px 10px;font-size:.78rem;color:var(--accent);}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:999px;cursor:pointer;transition:.2s;}
+.toggle input:checked+.toggle-track{background:var(--accent);}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:.2s;}
+.toggle input:checked+.toggle-track::after{transform:translateX(20px);}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin:12px 0;}
+.product-chip{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:11px 13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;user-select:none;}
+.product-chip.selected{border-color:var(--accent);background:rgba(0,229,160,.08);}
+.product-chip:hover:not(.selected){border-color:var(--muted);}
+.chip-name{font-size:.85rem;font-weight:500;}
+.chip-qty{font-size:.73rem;color:var(--muted);}
+.product-chip.selected .chip-name{color:var(--accent);}
+.recipe-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+.form-group label{display:block;font-size:.79rem;color:var(--muted);margin-bottom:5px;font-weight:500;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;transition:color .15s;padding:4px 6px;}
+.del-btn:hover{color:var(--danger);}
+.action-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:14px;}
+.empty-state{text-align:center;padding:40px 24px;color:var(--muted);}
+.empty-state p{font-size:.87rem;}
+.yt-suggestions{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:16px;}
+.yt-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s,transform .2s;}
+.yt-card:hover{border-color:rgba(255,0,0,.5);transform:translateY(-2px);}
+.yt-card-title{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);}
+.yt-card-query{font-size:.76rem;color:var(--muted);line-height:1.5;}
+.yt-open-btn{display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,0,0,.12);border:1px solid rgba(255,0,0,.35);color:#ff6b6b;border-radius:8px;padding:9px 14px;font-size:.8rem;font-weight:700;text-decoration:none;transition:all .2s;font-family:'Syne',sans-serif;width:100%;}
+.yt-open-btn:hover{background:rgba(255,0,0,.25);}
+.selected-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;}
+.sel-tag{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);font-size:.76rem;padding:3px 10px;border-radius:999px;}
+
+/* Alert section styles */
+.alert-method-tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+.method-tab{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;padding:8px 16px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;border-radius:9px;transition:all .2s;}
+.method-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,160,.07);}
+.method-panel{display:none;}
+.method-panel.active{display:block;}
+
+.wa-setup-box{background:linear-gradient(135deg,rgba(37,211,102,.08),rgba(37,211,102,.03));border:1px solid rgba(37,211,102,.3);border-radius:14px;padding:20px;margin-bottom:16px;}
+.wa-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#25d366;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.sms-setup-box{background:linear-gradient(135deg,rgba(59,91,219,.08),rgba(59,91,219,.03));border:1px solid rgba(59,91,219,.3);border-radius:14px;padding:20px;margin-bottom:16px;}
+.sms-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#748ffc;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.email-setup-box{background:linear-gradient(135deg,rgba(231,76,60,.08),rgba(231,76,60,.03));border:1px solid rgba(231,76,60,.3);border-radius:14px;padding:20px;margin-bottom:16px;}
+.email-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#ff8a80;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+
+.setup-sub{font-size:.81rem;color:var(--muted);margin-bottom:14px;line-height:1.6;}
+.wa-input-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
+.wa-input-row input{flex:1;min-width:200px;}
+.saved-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+.wa-saved-banner{background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);}
+.sms-saved-banner{background:rgba(59,91,219,.1);border:1px solid rgba(59,91,219,.3);}
+.email-saved-banner{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);}
+.saved-info{display:flex;align-items:center;gap:10px;}
+.wa-saved-num{font-size:.95rem;font-weight:700;color:#25d366;}
+.sms-saved-num{font-size:.95rem;font-weight:700;color:#748ffc;}
+.email-saved-val{font-size:.95rem;font-weight:700;color:#ff8a80;}
+
+.how-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px;}
+.how-title{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;color:var(--muted);margin-bottom:8px;}
+.wa-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;font-size:.8rem;color:var(--muted);line-height:1.5;}
+.step-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;flex-shrink:0;margin-top:1px;}
+.step-num-green{background:var(--accent);color:#0a0e13;}
+.step-num-blue{background:#748ffc;color:#fff;}
+.step-num-red{background:#ff8a80;color:#0a0e13;}
+
+.notif-grant-box{border-radius:12px;padding:16px;background:rgba(0,188,212,.06);border:1px solid rgba(0,188,212,.2);margin-bottom:16px;}
+.notif-grant-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#4dd9f0;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.notif-grant-sub{font-size:.8rem;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.sched-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.alert-log{margin-top:14px;}
+.log-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;margin-bottom:7px;font-size:.81rem;border-left:3px solid var(--accent);}
+.log-time{color:var(--muted);font-size:.72rem;}
+.log-msg{color:var(--text);margin-top:3px;line-height:1.5;}
+
+/* Auto-alert schedule card */
+.auto-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.auto-card-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--warn);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.auto-card-sub{font-size:.8rem;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.auto-status-on{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--accent);font-size:.76rem;padding:5px 14px;border-radius:999px;display:inline-block;margin-top:8px;}
+.auto-status-off{background:rgba(107,122,141,.1);border:1px solid rgba(107,122,141,.25);color:var(--muted);font-size:.76rem;padding:5px 14px;border-radius:999px;display:inline-block;margin-top:8px;}
+.schedule-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;}
+
+/* SMS carrier table */
+.carrier-table{width:100%;border-collapse:collapse;font-size:.79rem;margin-top:10px;}
+.carrier-table th{background:var(--surface);padding:7px 10px;text-align:left;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);}
+.carrier-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+.carrier-table tr:last-child td{border-bottom:none;}
+.copy-btn{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--accent);font-size:.72rem;padding:2px 8px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;}
+.copy-btn:hover{background:rgba(0,229,160,.2);}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:10px 22px;border-radius:999px;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;
+  z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.4);pointer-events:none;
+  max-width:92vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  animation:tIn .3s ease,tOut .4s ease 3.2s forwards;}
+.tok{background:var(--accent);color:#0a0e13;}
+.terr{background:var(--danger);color:#fff;}
+.tinfo{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+@keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes tOut{to{opacity:0}}
+@media(max-width:640px){.stats-row{grid-template-columns:1fr 1fr;}.recipe-options{grid-template-columns:1fr;}.wa-input-row{flex-direction:column;}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo-row"><span class="logo-icon">🥦</span><h1>Smart Expiry Tracker</h1></div>
+  <p>Track freshness · Cook smart · Waste nothing</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('scan',this)">📋 Add Items</button>
+  <button class="tab-btn" onclick="switchTab('tracker',this)">📊 Tracker</button>
+  <button class="tab-btn" onclick="switchTab('recipes',this)">🍳 Recipes</button>
+  <button class="tab-btn" onclick="switchTab('alerts',this)">🔔 Alerts</button>
+</div>
+
+<!-- ══ ADD ITEMS ══ -->
+<div id="tab-scan" class="tab-panel active">
+  <div class="card">
+    <div class="card-title">📷 Upload Grocery Bill — OCR Scanner</div>
+    <div class="upload-zone" id="uploadZone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="upload-icon">🧾</div>
+      <h3>Upload Grocery Bill / Receipt</h3>
+      <p>JPG, PNG, WEBP supported · scans locally in browser</p>
+      <label class="upload-btn-label" for="billInput">📂 Choose File</label>
+      <input type="file" id="billInput" accept="image/*">
+    </div>
+    <div class="preview-box" id="previewBox">
+      <img id="previewImg" alt="bill">
+      <div class="preview-bar">
+        <span class="prev-name" id="prevName"></span>
+        <div style="display:flex;gap:8px;">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;" for="changeInput">🔄 Change
+            <input type="file" id="changeInput" accept="image/*" style="display:none">
+          </label>
+          <button class="btn btn-danger btn-sm" onclick="removeImage()">✕ Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="ocr-wrap" id="ocrWrap">
+      <div class="ocr-txt" id="ocrTxt">Loading OCR engine…</div>
+      <div class="ocr-bar-bg"><div class="ocr-bar" id="ocrBar"></div></div>
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn btn-danger btn-sm" onclick="cancelOCR()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="ocr-chips" id="ocrChips"></div>
+    <div class="alert-info" id="ocrTip" style="display:none;margin-top:10px;">
+      💡 <strong>Tips:</strong> Use clear, well-lit photos. Printed receipts work best. Edit item names or quantities directly in the table below.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">✏️ Grocery Items</div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">Scanned items appear here. Set expiry dates, then tap <strong>Save to Tracker</strong>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item Name</th><th>Qty / Unit</th><th>Expiry Date</th><th></th></tr></thead>
+        <tbody id="manualBody"></tbody>
+      </table>
+    </div>
+    <div id="manualEmpty" style="text-align:center;padding:24px 0;">
+      <div style="font-size:2rem;margin-bottom:6px;">📝</div>
+      <p style="color:var(--muted);font-size:.84rem;">Upload a bill above, or click <strong style="color:var(--text)">+ Add Row</strong></p>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-secondary btn-sm" onclick="addRow()">+ Add Row</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadDemo()">✨ Demo Data</button>
+      <button class="btn btn-primary" onclick="saveToTracker()">💾 Save to Tracker</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TRACKER ══ -->
+<div id="tab-tracker" class="tab-panel">
+  <div class="stats-row">
+    <div class="stat-box stat-ok"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total</div></div>
+    <div class="stat-box stat-ok"><div class="stat-num" id="s-fresh">0</div><div class="stat-label">Fresh</div></div>
+    <div class="stat-box stat-warn"><div class="stat-num" id="s-soon">0</div><div class="stat-label">Expiring Soon</div></div>
+    <div class="stat-box stat-danger"><div class="stat-num" id="s-exp">0</div><div class="stat-label">Expired</div></div>
+  </div>
+  <div id="alertsBox"></div>
+  <div class="card">
+    <div class="card-title">📋 Grocery Inventory</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Item</th><th>Qty</th><th>Expiry Date</th><th>Days Left</th><th></th></tr></thead>
+        <tbody id="trackerBody"></tbody>
+      </table>
+    </div>
+    <div class="action-row" style="margin-top:14px;">
+      <button class="btn btn-secondary btn-sm" onclick="addTrackerRow()">+ Add Item</button>
+      <button class="btn btn-danger btn-sm" onclick="clearExpired()">🗑️ Remove Expired</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RECIPES ══ -->
+<div id="tab-recipes" class="tab-panel">
+  <div class="card">
+    <div class="card-title">🛒 Select Ingredients You Have</div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:10px;">Tap items from your tracker to select them:</p>
+    <div class="products-grid" id="productsGrid">
+      <div class="empty-state"><p>Add items in the Tracker first</p></div>
+    </div>
+  </div>
+  <div class="card" id="recipeStep2" style="display:none;">
+    <div class="card-title">⚙️ Preferences</div>
+    <div class="recipe-options">
+      <div class="form-group"><label>👥 People</label>
+        <select id="memberCount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option></select>
+      </div>
+      <div class="form-group"><label>🍽️ Meal</label>
+        <select id="mealType"><option value="breakfast">☀️ Breakfast</option><option value="lunch">🌤️ Lunch</option><option value="snacks">🌆 Snacks</option><option value="dinner" selected>🌙 Dinner</option></select>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.79rem;color:var(--muted);margin-bottom:8px;font-weight:500;">🔍 Your selected ingredients:</div>
+      <div class="selected-tags" id="selectedTagsDisplay"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="openYouTubeSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Search on YouTube
+      </button>
+      <button class="btn btn-secondary" onclick="openMultipleSearches()">🎯 Open 3 Recipe Ideas</button>
+    </div>
+  </div>
+  <div id="ytSuggestionsOut"></div>
+</div>
+
+<!-- ══ ALERTS ══ -->
+<div id="tab-alerts" class="tab-panel">
+
+  <!-- Browser Notifications -->
+  <div class="notif-grant-box">
+    <div class="notif-grant-title">🔔 Browser Notifications</div>
+    <div class="notif-grant-sub">Get instant pop-up alerts on your device when items are about to expire.</div>
+    <div id="browserNotifStatus"></div>
+    <button class="btn btn-primary btn-sm" id="btnGrantNotif" onclick="requestBrowserNotif()">🔔 Enable Browser Notifications</button>
+    <button class="btn btn-secondary btn-sm" style="display:none;margin-left:8px;" id="btnTestNotif" onclick="sendTestBrowserNotif()">🧪 Test Notification</button>
+  </div>
+
+  <!-- Auto Alert Scheduler -->
+  <div class="auto-card">
+    <div class="auto-card-title">⏰ Automatic Daily Alert Scheduler</div>
+    <div class="auto-card-sub">Set a time — the app will automatically send alerts every day via your chosen method (WhatsApp / SMS / Email) when items are expiring. <strong style="color:var(--warn);">Note:</strong> Browser must be open at the scheduled time for alerts to fire. For best results, keep the tab pinned.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <label style="font-size:.82rem;color:var(--muted);">Alert Time:</label>
+        <input type="time" id="alertTimeInput" value="09:00" style="width:130px;">
+        <select id="alertDaysSelect" style="width:180px;">
+          <option value="daily">Every Day</option>
+          <option value="weekdays">Weekdays Only</option>
+          <option value="weekends">Weekends Only</option>
+        </select>
+        <select id="alertMethodSelect" style="width:160px;">
+          <option value="whatsapp">📱 WhatsApp</option>
+          <option value="sms">💬 SMS (Email Gate)</option>
+          <option value="email">📧 Email</option>
+          <option value="browser">🔔 Browser Notif</option>
+        </select>
+      </div>
+      <label class="toggle"><input type="checkbox" id="autoAlertToggle" onchange="toggleAutoAlert()"><div class="toggle-track"></div></label>
+    </div>
+    <div id="autoAlertStatusBadge"></div>
+    <div id="nextAlertInfo" style="font-size:.78rem;color:var(--muted);margin-top:8px;"></div>
+  </div>
+
+  <!-- Alert Method Tabs -->
+  <div class="card">
+    <div class="card-title">📤 Alert Methods Setup</div>
+    <div class="alert-method-tabs">
+      <button class="method-tab active" onclick="switchMethod('whatsapp',this)">📱 WhatsApp</button>
+      <button class="method-tab" onclick="switchMethod('sms',this)">💬 Free SMS</button>
+      <button class="method-tab" onclick="switchMethod('email',this)">📧 Email</button>
+    </div>
+
+    <!-- WhatsApp Panel -->
+    <div class="method-panel active" id="method-whatsapp">
+      <div class="wa-setup-box">
+        <div class="wa-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp Alerts
+        </div>
+        <div class="setup-sub">Save your number once. The app will automatically open WhatsApp with a pre-filled alert message at your scheduled time — just keep the browser tab open!</div>
+        <div id="waSavedBanner" style="display:none;">
+          <div class="saved-banner wa-saved-banner">
+            <div class="saved-info">
+              <span class="wa-saved-num" id="waSavedNum"></span>
+              <span style="font-size:.78rem;color:var(--accent);background:rgba(0,229,160,.1);border-radius:999px;padding:2px 9px;">✓ Saved</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="editWaNumber()">✏️ Change</button>
+          </div>
+        </div>
+        <div id="waInputBox">
+          <label style="display:block;font-size:.79rem;color:var(--muted);margin-bottom:7px;font-weight:500;">📱 WhatsApp Number (with country code)</label>
+          <div class="wa-input-row">
+            <input type="tel" id="waPhoneInput" placeholder="+91 98765 43210">
+            <button class="btn btn-wa" onclick="saveWaNumber()">Save Number</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:9px;">
+          <button class="btn btn-wa btn-sm" onclick="sendWaAlertNow('expired')">🚨 Send Expired Alert Now</button>
+          <button class="btn btn-wa btn-sm" onclick="sendWaAlertNow('soon')">⚠️ Send Expiring Soon Now</button>
+          <button class="btn btn-wa btn-sm" onclick="sendWaAlertNow('all')">📋 Full Report Now</button>
+        </div>
+        <div class="how-box">
+          <div class="how-title">ℹ️ About Auto WhatsApp</div>
+          <div class="wa-step"><div class="step-num step-num-green">1</div><span>Save your number &amp; enable the scheduler above</span></div>
+          <div class="wa-step"><div class="step-num step-num-green">2</div><span>At the scheduled time, WhatsApp will auto-open with the message pre-filled</span></div>
+          <div class="wa-step"><div class="step-num step-num-green">3</div><span>Tap <strong>Send</strong> in WhatsApp — browsers cannot send messages directly due to security rules</span></div>
+          <div class="wa-step"><div class="step-num step-num-green">4</div><span>For fully automatic (no click): use the <strong>SMS Email Gateway</strong> or <strong>Email</strong> tab instead</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMS Panel -->
+    <div class="method-panel" id="method-sms">
+      <div class="sms-setup-box">
+        <div class="sms-title">💬 Free SMS via Email Gateway</div>
+        <div class="setup-sub">Send real SMS to any phone — completely <strong style="color:#748ffc;">FREE</strong>. Works by sending an email to a special address that your carrier converts into an SMS. No app needed, no cost, no signup!</div>
+
+        <div style="margin-bottom:16px;">
+          <label style="font-size:.79rem;color:var(--muted);margin-bottom:6px;display:block;font-weight:500;">📱 Your Phone Number</label>
+          <div class="wa-input-row">
+            <input type="tel" id="smsPhoneInput" placeholder="9876543210 (digits only)">
+            <select id="smsCarrierSelect" style="min-width:180px;">
+              <option value="">— Select Carrier —</option>
+              <optgroup label="🇮🇳 India">
+                <option value="@airtelmail.in">Airtel</option>
+                <option value="@vtext.jio">Jio (via email)</option>
+                <option value="@ideas.vodafone.com">Vodafone Idea</option>
+                <option value="@bsnl.in">BSNL</option>
+              </optgroup>
+              <optgroup label="🇺🇸 USA">
+                <option value="@txt.att.net">AT&T</option>
+                <option value="@tmomail.net">T-Mobile</option>
+                <option value="@vtext.com">Verizon</option>
+                <option value="@messaging.sprintpcs.com">Sprint</option>
+              </optgroup>
+              <optgroup label="🇬🇧 UK">
+                <option value="@t-mobile.uk.com">T-Mobile UK</option>
+                <option value="@o2.co.uk">O2</option>
+              </optgroup>
+              <optgroup label="🇨🇦 Canada">
+                <option value="@txt.bell.ca">Bell</option>
+                <option value="@msg.telus.com">Telus</option>
+              </optgroup>
+            </select>
+            <button class="btn btn-sms btn-sm" onclick="saveSmsGateway()">💾 Save</button>
+          </div>
+          <div style="font-size:.76rem;color:var(--muted);margin-top:5px;">Your SMS gateway address: <span id="smsGatewayPreview" style="color:var(--accent);">—</span></div>
+        </div>
+
+        <div id="smsSavedBanner" style="display:none;">
+          <div class="saved-banner sms-saved-banner" style="margin-bottom:12px;">
+            <div class="saved-info">
+              <span class="sms-saved-num" id="smsSavedVal"></span>
+              <span style="font-size:.78rem;color:#748ffc;background:rgba(59,91,219,.1);border-radius:999px;padding:2px 9px;">✓ Saved</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="editSmsGateway()">✏️ Change</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:9px;">
+          <button class="btn btn-sms btn-sm" onclick="sendSmsNow('expired')">🚨 SMS Expired Items</button>
+          <button class="btn btn-sms btn-sm" onclick="sendSmsNow('soon')">⚠️ SMS Expiring Soon</button>
+          <button class="btn btn-sms btn-sm" onclick="sendSmsNow('all')">📋 SMS Full Report</button>
+        </div>
+
+        <div class="how-box" style="margin-top:14px;">
+          <div class="how-title">📖 How Free SMS Gateway Works</div>
+          <div class="wa-step"><div class="step-num step-num-blue">1</div><span>Enter your phone number &amp; select your mobile carrier above</span></div>
+          <div class="wa-step"><div class="step-num step-num-blue">2</div><span>The app opens your email client with a pre-filled message to <strong style="color:#748ffc;">number@carrier.com</strong></span></div>
+          <div class="wa-step"><div class="step-num step-num-blue">3</div><span>Hit Send in your email — your carrier delivers it as a real SMS to your phone</span></div>
+          <div class="wa-step"><div class="step-num step-num-blue">4</div><span>Enable the Auto Scheduler above — at scheduled time, email auto-opens, you just tap Send</span></div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="how-title" style="color:var(--muted);font-size:.8rem;font-weight:700;">📋 Common Indian Carriers (Email-to-SMS)</div>
+          <table class="carrier-table">
+            <tr><th>Carrier</th><th>Gateway Address</th><th></th></tr>
+            <tr><td>Airtel</td><td>number@airtelmail.in</td><td><button class="copy-btn" onclick="copyText('number@airtelmail.in')">Copy</button></td></tr>
+            <tr><td>Jio</td><td>number@jio.com</td><td><button class="copy-btn" onclick="copyText('number@jio.com')">Copy</button></td></tr>
+            <tr><td>Vodafone Idea</td><td>number@ideas.vodafone.com</td><td><button class="copy-btn" onclick="copyText('number@ideas.vodafone.com')">Copy</button></td></tr>
+            <tr><td>BSNL</td><td>number@bsnl.in</td><td><button class="copy-btn" onclick="copyText('number@bsnl.in')">Copy</button></td></tr>
+          </table>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:6px;">ℹ️ Replace "number" with your 10-digit mobile number. Gateway support varies by carrier plan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Panel -->
+    <div class="method-panel" id="method-email">
+      <div class="email-setup-box">
+        <div class="email-title">📧 Email Alerts — Fully Automatic</div>
+        <div class="setup-sub">Send expiry alerts directly to any email address. Works with Gmail, Outlook, or any email client on your device. At the scheduled time, the app opens your email app with the full report pre-filled — just tap Send!</div>
+
+        <div id="emailSavedBanner" style="display:none;">
+          <div class="saved-banner email-saved-banner" style="margin-bottom:12px;">
+            <div class="saved-info">
+              <span class="email-saved-val" id="emailSavedVal"></span>
+              <span style="font-size:.78rem;color:#ff8a80;background:rgba(231,76,60,.1);border-radius:999px;padding:2px 9px;">✓ Saved</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="editEmail()">✏️ Change</button>
+          </div>
+        </div>
+        <div id="emailInputBox">
+          <label style="font-size:.79rem;color:var(--muted);margin-bottom:6px;display:block;font-weight:500;">📧 Your Email Address</label>
+          <div class="wa-input-row">
+            <input type="email" id="emailInput" placeholder="you@gmail.com">
+            <button class="btn btn-email btn-sm" onclick="saveEmail()">💾 Save Email</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:9px;">
+          <button class="btn btn-email btn-sm" onclick="sendEmailNow('expired')">🚨 Email Expired Items</button>
+          <button class="btn btn-email btn-sm" onclick="sendEmailNow('soon')">⚠️ Email Expiring Soon</button>
+          <button class="btn btn-email btn-sm" onclick="sendEmailNow('all')">📋 Email Full Report</button>
+        </div>
+
+        <div class="how-box" style="margin-top:14px;">
+          <div class="how-title">📖 How Auto Email Alerts Work</div>
+          <div class="wa-step"><div class="step-num step-num-red">1</div><span>Save your email &amp; enable the scheduler above</span></div>
+          <div class="wa-step"><div class="step-num step-num-red">2</div><span>At scheduled time, your email app auto-opens with the full expiry report pre-filled</span></div>
+          <div class="wa-step"><div class="step-num step-num-red">3</div><span>Tap <strong>Send</strong> — done! You receive the report in your inbox</span></div>
+          <div class="wa-step"><div class="step-num step-num-red">4</div><span>You can also send yourself an SMS by entering your carrier's email gateway as the "email"</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Log -->
+  <div class="card">
+    <div class="card-title">📋 Alert History</div>
+    <div class="alert-log" id="alertLog">
+      <div style="color:var(--muted);font-size:.83rem;text-align:center;padding:16px 0;">No alerts sent yet</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let manualRows = [];
+let trackerItems = JSON.parse(localStorage.getItem('trackerItems')||'[]');
+let selectedIndices = new Set();
+let ocrWorker = null;
+let ocrCancelled = false;
+let ocrRunning = false; // FIX: guard against double OCR
+let alertLog = JSON.parse(localStorage.getItem('alertLog')||'[]');
+let waPhone = localStorage.getItem('waPhone')||'';
+let smsGateway = localStorage.getItem('smsGateway')||'';
+let alertEmail = localStorage.getItem('alertEmail')||'';
+let autoAlertEnabled = localStorage.getItem('autoAlert')==='1';
+let autoAlertInterval = null;
+
+// ══════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tracker') renderTracker();
+  if(id==='recipes'){ selectedIndices.clear(); renderProductsGrid(); }
+  if(id==='alerts'){ renderAlerts(); renderAlertLog(); }
+}
+
+function switchMethod(id, btn){
+  document.querySelectorAll('.method-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.method-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('method-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  UPLOAD & OCR — FIXED: no double trigger
+// ══════════════════════════════════════════
+// Attach listeners once, not via inline onchange
+document.getElementById('billInput').addEventListener('change', function(e){
+  if(e.target.files[0]) processFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('changeInput').addEventListener('change', function(e){
+  if(e.target.files[0]) processFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+function onDragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('dragover'); }
+function onDragLeave(e){ document.getElementById('uploadZone').classList.remove('dragover'); }
+function onDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if(f) processFile(f);
+}
+
+function processFile(file){
+  if(!file.type.startsWith('image/')){
+    showToast('Please upload an image file (JPG, PNG, WEBP)','err'); return;
+  }
+  if(ocrRunning){ showToast('OCR already running, please wait…','err'); return; }
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const src = ev.target.result;
+    document.getElementById('previewImg').src = src;
+    document.getElementById('prevName').textContent = file.name;
+    document.getElementById('previewBox').style.display = 'block';
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('ocrChips').innerHTML = '';
+    document.getElementById('ocrTip').style.display = 'none';
+    runOCR(src);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage(){
+  document.getElementById('previewBox').style.display = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('previewImg').src = '';
+  document.getElementById('ocrChips').innerHTML = '';
+  document.getElementById('ocrTip').style.display = 'none';
+  document.getElementById('ocrWrap').style.display = 'none';
+  cancelOCR();
+}
+
+async function runOCR(imgSrc){
+  if(ocrRunning) return; // FIX: prevent double execution
+  ocrRunning = true;
+  ocrCancelled = false;
+  const wrap = document.getElementById('ocrWrap');
+  const bar  = document.getElementById('ocrBar');
+  const txt  = document.getElementById('ocrTxt');
+  wrap.style.display = 'block';
+  bar.style.width = '0%';
+  txt.textContent = 'Loading OCR engine…';
+  try {
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if(ocrCancelled) return;
+        if(m.status==='loading tesseract core') txt.textContent='Loading OCR core…';
+        else if(m.status==='initializing tesseract') txt.textContent='Initialising…';
+        else if(m.status==='loading language traineddata') txt.textContent='Loading language data…';
+        else if(m.status==='recognizing text') txt.textContent='Scanning bill… '+Math.round((m.progress||0)*100)+'%';
+        if(m.progress!==undefined) bar.style.width=(m.progress*100)+'%';
+      }
+    });
+    ocrWorker = worker;
+    if(ocrCancelled){ await worker.terminate(); ocrRunning=false; return; }
+    const {data} = await worker.recognize(imgSrc);
+    await worker.terminate();
+    ocrWorker = null;
+    ocrRunning = false;
+    if(ocrCancelled) return;
+    wrap.style.display = 'none';
+    parseOCRText(data.text);
+  } catch(err){
+    ocrRunning = false;
+    if(!ocrCancelled){
+      document.getElementById('ocrWrap').style.display = 'none';
+      showToast('OCR failed: '+err.message,'err');
+    }
+  }
+}
+
+function cancelOCR(){
+  ocrCancelled = true;
+  ocrRunning = false;
+  if(ocrWorker){ ocrWorker.terminate().catch(()=>{}); ocrWorker=null; }
+  document.getElementById('ocrWrap').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+//  PARSE OCR TEXT
+// ══════════════════════════════════════════
+function parseOCRText(text){
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  const skipWords = /^(total|subtotal|tax|gst|vat|discount|amount|mrp|price|rs|inr|₹|thank|welcome|bill|invoice|receipt|date|time|cash|change|due|balance|paid|no\.|sr\.|sl\.|item|qty|unit|rate|hsn|gstin)/i;
+  const pricePattern = /\d+[.,]\d{2,3}$/;
+  const qtyPatterns = [
+    /^(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|l|ltr|litre|pcs?|nos?|pack|packet|box|bottle|bag|dozen|doz)\b/i,
+    /\b(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|l|ltr|litre|pcs?|nos?|pack|packet|box|bottle|bag|dozen|doz)\b/i,
+    /\bx\s*(\d+)\b/i,
+    /\b(\d+)\s*x\b/i,
+    /^(\d+)\s+/,
+  ];
+  const extracted = [];
+  lines.forEach(line=>{
+    if(skipWords.test(line.trim())) return;
+    if(pricePattern.test(line.trim())) return;
+    if(/^\d+(\.\d+)?$/.test(line.trim())) return;
+    let clean = line.replace(/[\d,]+\.\d{2,3}\s*$/, '').replace(/₹\s*[\d.,]+/g,'').trim();
+    if(clean.length<2) return;
+    let qty='', unit='';
+    for(const pat of qtyPatterns){
+      const m = clean.match(pat);
+      if(m){ qty=m[1]; unit=m[2]||''; clean=clean.replace(m[0],'').trim(); break; }
+    }
+    clean = clean.replace(/[^a-zA-Z0-9\s\-\/&().]/g,' ').replace(/\s+/g,' ').trim();
+    if(clean.length<2) return;
+    const name = clean.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+    extracted.push({name, qty: qty?(qty+(unit?' '+unit:'')):'1'});
+  });
+  if(extracted.length===0){
+    showToast('Could not detect items. Try a clearer image or add manually.','err');
+    document.getElementById('ocrTip').style.display='block';
+    return;
+  }
+  const chipBox = document.getElementById('ocrChips');
+  chipBox.innerHTML = extracted.map(e=>`<span class="ocr-chip">✓ ${e.name}</span>`).join('');
+  document.getElementById('ocrTip').style.display = 'block';
+  extracted.forEach(item => manualRows.push({name:item.name, qty:item.qty, expiry:''}));
+  renderManualTable();
+  showToast(`✅ Detected ${extracted.length} item(s)! Set expiry dates below.`,'ok');
+}
+
+// ══════════════════════════════════════════
+//  MANUAL TABLE
+// ══════════════════════════════════════════
+function renderManualTable(){
+  const tbody = document.getElementById('manualBody');
+  const empty = document.getElementById('manualEmpty');
+  if(!manualRows.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = manualRows.map((r,i)=>`
+    <tr>
+      <td><input type="text" value="${escHtml(r.name)}" oninput="manualRows[${i}].name=this.value" placeholder="Item name"></td>
+      <td><input type="text" value="${escHtml(r.qty)}" oninput="manualRows[${i}].qty=this.value" placeholder="e.g. 1 kg" style="max-width:90px;"></td>
+      <td><input type="date" value="${r.expiry}" onchange="manualRows[${i}].expiry=this.value"></td>
+      <td><button class="del-btn" onclick="removeManualRow(${i})">🗑</button></td>
+    </tr>`).join('');
+}
+
+function addRow(){ manualRows.push({name:'',qty:'1',expiry:''}); renderManualTable(); }
+function removeManualRow(i){ manualRows.splice(i,1); renderManualTable(); }
+
+function saveToTracker(){
+  const valid = manualRows.filter(r=>r.name.trim());
+  if(!valid.length){ showToast('Add at least one item name','err'); return; }
+  valid.forEach(r=>{
+    trackerItems.push({
+      id: String(Date.now())+String(Math.floor(Math.random()*1e6)),
+      name:r.name.trim(), qty:r.qty||'1', expiry:r.expiry, added:new Date().toISOString()
+    });
+  });
+  saveTracker();
+  manualRows = [];
+  renderManualTable();
+  showToast(`💾 ${valid.length} item(s) saved to tracker!`,'ok');
+}
+
+function loadDemo(){
+  const today = new Date();
+  const d = n=>{ const x=new Date(today); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
+  manualRows=[
+    {name:'Tomatoes',qty:'500 g',expiry:d(2)},
+    {name:'Spinach',qty:'250 g',expiry:d(1)},
+    {name:'Milk',qty:'1 L',expiry:d(3)},
+    {name:'Bread',qty:'1 pack',expiry:d(5)},
+    {name:'Eggs',qty:'12 nos',expiry:d(14)},
+    {name:'Onions',qty:'1 kg',expiry:d(20)},
+    {name:'Yogurt',qty:'400 g',expiry:d(-1)},
+  ];
+  renderManualTable();
+  showToast('✨ Demo data loaded!','ok');
+}
+
+// ══════════════════════════════════════════
+//  TRACKER
+// ══════════════════════════════════════════
+function saveTracker(){ localStorage.setItem('trackerItems',JSON.stringify(trackerItems)); }
+
+function daysLeft(expiry){
+  if(!expiry) return null;
+  const exp = new Date(expiry); exp.setHours(23,59,59);
+  return Math.round((exp - new Date())/(1000*60*60*24));
+}
+
+function renderTracker(){
+  const tbody = document.getElementById('trackerBody');
+  if(!trackerItems.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);">No items yet — add from the Add Items tab</td></tr>`;
+    updateStats(); return;
+  }
+  const sorted = [...trackerItems].sort((a,b)=>{
+    if(!a.expiry) return 1; if(!b.expiry) return -1;
+    return new Date(a.expiry)-new Date(b.expiry);
+  });
+  tbody.innerHTML = sorted.map(item=>{
+    const dl = daysLeft(item.expiry);
+    let dotClass='dot-none', daysText='—';
+    if(dl!==null){
+      if(dl<0){ dotClass='dot-danger'; daysText=`<span style="color:var(--danger);font-weight:700;">Expired ${Math.abs(dl)}d ago</span>`; }
+      else if(dl<=3){ dotClass='dot-warn'; daysText=`<span style="color:var(--warn);font-weight:700;">${dl}d left</span>`; }
+      else{ dotClass='dot-ok'; daysText=`<span style="color:var(--accent);">${dl}d left</span>`; }
+    }
+    return `<tr>
+      <td><span class="dot ${dotClass}"></span></td>
+      <td><input type="text" value="${escHtml(item.name)}" onchange="updateTrackerField('${item.id}','name',this.value)" style="background:transparent;border:none;padding:0;font-size:.88rem;color:var(--text);width:100%;min-width:90px;"></td>
+      <td><input type="text" value="${escHtml(item.qty||'')}" onchange="updateTrackerField('${item.id}','qty',this.value)" style="background:transparent;border:none;padding:0;font-size:.88rem;color:var(--text);width:80px;"></td>
+      <td><input type="date" value="${item.expiry||''}" onchange="updateTrackerField('${item.id}','expiry',this.value)"></td>
+      <td>${daysText}</td>
+      <td><button class="del-btn" onclick="deleteTrackerItem('${item.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+  updateStats();
+  renderAlertBanners();
+}
+
+function updateTrackerField(id,field,val){
+  const item = trackerItems.find(i=>i.id===id);
+  if(item){ item[field]=val; saveTracker(); }
+}
+function deleteTrackerItem(id){
+  trackerItems = trackerItems.filter(i=>i.id!==id);
+  saveTracker(); renderTracker();
+}
+function addTrackerRow(){
+  trackerItems.push({id:String(Date.now())+String(Math.floor(Math.random()*1e6)),name:'New Item',qty:'1',expiry:'',added:new Date().toISOString()});
+  saveTracker(); renderTracker();
+}
+function clearExpired(){
+  const before = trackerItems.length;
+  trackerItems = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl===null||dl>=0; });
+  saveTracker(); renderTracker();
+  showToast(`Removed ${before-trackerItems.length} expired item(s)`,'ok');
+}
+function updateStats(){
+  let fresh=0,soon=0,exp=0;
+  trackerItems.forEach(i=>{ const dl=daysLeft(i.expiry); if(dl===null)return; if(dl<0)exp++; else if(dl<=3)soon++; else fresh++; });
+  document.getElementById('s-total').textContent = trackerItems.length;
+  document.getElementById('s-fresh').textContent = fresh;
+  document.getElementById('s-soon').textContent  = soon;
+  document.getElementById('s-exp').textContent   = exp;
+}
+function renderAlertBanners(){
+  const box = document.getElementById('alertsBox');
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  let html='';
+  if(expired.length) html+=`<div class="alert-banner alert-danger">🚨 <div><strong>${expired.length} item(s) expired:</strong> ${expired.map(i=>i.name).join(', ')}</div></div>`;
+  if(soon.length)    html+=`<div class="alert-banner alert-warn">⚠️ <div><strong>${soon.length} item(s) expiring within 3 days:</strong> ${soon.map(i=>i.name).join(', ')}</div></div>`;
+  if(!expired.length&&!soon.length&&trackerItems.length) html=`<div class="alert-banner alert-ok">✅ All items are fresh!</div>`;
+  box.innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+//  RECIPES
+// ══════════════════════════════════════════
+function renderProductsGrid(){
+  const grid = document.getElementById('productsGrid');
+  if(!trackerItems.length){
+    grid.innerHTML='<div class="empty-state"><p>Add items in the Tracker first</p></div>';
+    document.getElementById('recipeStep2').style.display='none'; return;
+  }
+  grid.innerHTML = trackerItems.map((item,idx)=>{
+    const sel = selectedIndices.has(idx);
+    return `<div class="product-chip${sel?' selected':''}" onclick="toggleIngredient(${idx})">
+      <div><div class="chip-name">${escHtml(item.name)}</div><div class="chip-qty">${escHtml(item.qty||'')}</div></div>
+    </div>`;
+  }).join('');
+  updateRecipeStep2();
+}
+function toggleIngredient(idx){
+  if(selectedIndices.has(idx)) selectedIndices.delete(idx); else selectedIndices.add(idx);
+  renderProductsGrid();
+}
+function updateRecipeStep2(){
+  const step2 = document.getElementById('recipeStep2');
+  if(!selectedIndices.size){ step2.style.display='none'; return; }
+  step2.style.display='block';
+  const names = trackerItems.filter((_,i)=>selectedIndices.has(i)).map(i=>i.name);
+  document.getElementById('selectedTagsDisplay').innerHTML = names.map(n=>`<span class="sel-tag">${escHtml(n)}</span>`).join('');
+}
+function getSelectedNames(){ return trackerItems.filter((_,i)=>selectedIndices.has(i)).map(i=>i.name); }
+function openYouTubeSearch(){
+  const names = getSelectedNames();
+  if(!names.length){ showToast('Select ingredients first','err'); return; }
+  window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(names.join(' ')+' '+document.getElementById('mealType').value+' recipe'),'_blank');
+}
+function openMultipleSearches(){
+  const names = getSelectedNames();
+  if(!names.length){ showToast('Select ingredients first','err'); return; }
+  const meal = document.getElementById('mealType').value;
+  const people = document.getElementById('memberCount').value;
+  const queries=[
+    names.slice(0,3).join(' ')+' '+meal+' recipe for '+people,
+    names.join(' ')+' easy '+meal,
+    'quick '+meal+' with '+names[0]+(names[1]?' and '+names[1]:''),
+  ];
+  const out = document.getElementById('ytSuggestionsOut');
+  out.innerHTML=`<div class="yt-suggestions">${queries.map((q,i)=>`
+    <div class="yt-card">
+      <div class="yt-card-title">${['🍽 Main Recipe','⚡ Quick Version','🌟 Variation'][i]}</div>
+      <div class="yt-card-query">${escHtml(q)}</div>
+      <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(q)}" target="_blank" class="yt-open-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Open on YouTube
+      </a>
+    </div>`).join('')}</div>`;
+  queries.forEach(q=>window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(q),'_blank'));
+}
+
+// ══════════════════════════════════════════
+//  AUTO ALERT SCHEDULER
+// ══════════════════════════════════════════
+function toggleAutoAlert(){
+  autoAlertEnabled = document.getElementById('autoAlertToggle').checked;
+  localStorage.setItem('autoAlert', autoAlertEnabled?'1':'0');
+  if(autoAlertEnabled){
+    startAlertScheduler();
+    showToast('✅ Auto-alert scheduler enabled!','ok');
+  } else {
+    stopAlertScheduler();
+    showToast('Auto-alert disabled','ok');
+  }
+  updateAutoAlertUI();
+}
+
+function startAlertScheduler(){
+  stopAlertScheduler();
+  // Check every minute
+  autoAlertInterval = setInterval(checkScheduledAlert, 60000);
+  checkScheduledAlert(); // check immediately on enable
+}
+
+function stopAlertScheduler(){
+  if(autoAlertInterval){ clearInterval(autoAlertInterval); autoAlertInterval=null; }
+}
+
+function checkScheduledAlert(){
+  if(!autoAlertEnabled) return;
+  const now = new Date();
+  const currentTime = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const scheduledTime = document.getElementById('alertTimeInput').value || '09:00';
+  const days = document.getElementById('alertDaysSelect').value;
+  const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+  // Check day filter
+  if(days==='weekdays' && (dayOfWeek===0||dayOfWeek===6)) return;
+  if(days==='weekends' && dayOfWeek>=1 && dayOfWeek<=5) return;
+  // Check time match
+  if(currentTime !== scheduledTime) return;
+  // Check if already fired today
+  const lastFired = localStorage.getItem('lastAlertFired');
+  const todayKey = now.toDateString()+scheduledTime;
+  if(lastFired === todayKey) return;
+  localStorage.setItem('lastAlertFired', todayKey);
+  // Fire alert
+  const method = document.getElementById('alertMethodSelect').value;
+  fireAutoAlert(method);
+}
+
+function fireAutoAlert(method){
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  if(!expired.length && !soon.length){ addAlertLog('⏰ Scheduled check: All items fresh, no alert needed.'); return; }
+  addAlertLog(`⏰ Auto-alert fired via ${method}: ${expired.length} expired, ${soon.length} expiring soon`);
+  if(method==='whatsapp') sendWaAlertNow('all');
+  else if(method==='sms') sendSmsNow('all');
+  else if(method==='email') sendEmailNow('all');
+  else if(method==='browser'){
+    sendBrowserNotif('🚨 Expiry Alert!',
+      (expired.length?`Expired: ${expired.map(i=>i.name).join(', ')}. `:'') +
+      (soon.length?`Expiring soon: ${soon.map(i=>i.name).join(', ')}.`:'')
+    );
+  }
+}
+
+function updateAutoAlertUI(){
+  const badge = document.getElementById('autoAlertStatusBadge');
+  const nextInfo = document.getElementById('nextAlertInfo');
+  if(autoAlertEnabled){
+    const t = document.getElementById('alertTimeInput').value;
+    const d = document.getElementById('alertDaysSelect').value;
+    const m = document.getElementById('alertMethodSelect').value;
+    badge.innerHTML = `<span class="auto-status-on">✅ Scheduler active — ${t} · ${d} · via ${m}</span>`;
+    nextInfo.textContent = `Next check at ${t} (tab must be open)`;
+  } else {
+    badge.innerHTML = `<span class="auto-status-off">⏸ Scheduler off — toggle to enable</span>`;
+    nextInfo.textContent = '';
+  }
+}
+
+// ══════════════════════════════════════════
+//  BROWSER NOTIFICATIONS
+// ══════════════════════════════════════════
+function renderAlerts(){
+  const status   = document.getElementById('browserNotifStatus');
+  const btnGrant = document.getElementById('btnGrantNotif');
+  const btnTest  = document.getElementById('btnTestNotif');
+  if(!('Notification' in window)){
+    status.innerHTML=`<div style="font-size:.8rem;color:var(--danger);margin-bottom:8px;">❌ Browser does not support notifications.</div>`;
+    btnGrant.style.display='none'; return;
+  }
+  if(Notification.permission==='granted'){
+    status.innerHTML=`<div style="font-size:.8rem;color:var(--accent);margin-bottom:8px;">✅ Browser notifications <strong>enabled</strong>!</div>`;
+    btnGrant.style.display='none'; btnTest.style.display='inline-flex';
+  } else if(Notification.permission==='denied'){
+    status.innerHTML=`<div style="font-size:.8rem;color:var(--danger);margin-bottom:8px;">🚫 Blocked — allow in browser settings.</div>`;
+    btnGrant.style.display='none';
+  } else {
+    status.innerHTML=`<div style="font-size:.8rem;color:var(--muted);margin-bottom:8px;">🔔 Click below to allow expiry pop-up alerts.</div>`;
+    btnGrant.style.display='inline-flex'; btnTest.style.display='none';
+  }
+  document.getElementById('autoAlertToggle').checked = autoAlertEnabled;
+  updateAutoAlertUI();
+  renderWaSection();
+  renderSmsSection();
+  renderEmailSection();
+  if(autoAlertEnabled) startAlertScheduler();
+}
+
+function requestBrowserNotif(){
+  Notification.requestPermission().then(p=>{
+    renderAlerts();
+    if(p==='granted'){ showToast('✅ Notifications enabled!','ok'); sendBrowserNotif('Smart Expiry Tracker','Ready! Expiry alerts will appear here.'); }
+    else if(p==='denied') showToast('Notifications blocked','err');
+  });
+}
+function sendTestBrowserNotif(){
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  if(!expired.length&&!soon.length) sendBrowserNotif('✅ All Fresh!','No expiry alerts needed right now.');
+  else {
+    if(expired.length) sendBrowserNotif('🚨 Expired!', expired.map(i=>i.name).join(', ')+' have expired!');
+    if(soon.length)    sendBrowserNotif('⚠️ Expiring Soon!', soon.map(i=>i.name).join(', ')+' expire within 3 days!');
+  }
+  showToast('Test notification sent!','ok');
+}
+function sendBrowserNotif(title, body){
+  if(Notification.permission==='granted'){
+    new Notification(title,{body, icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥦</text></svg>'});
+  }
+}
+
+// ══════════════════════════════════════════
+//  WHATSAPP
+// ══════════════════════════════════════════
+function renderWaSection(){
+  const sb = document.getElementById('waSavedBanner');
+  const ib = document.getElementById('waInputBox');
+  if(waPhone){ document.getElementById('waSavedNum').textContent='+'+waPhone; sb.style.display='flex'; ib.style.display='none'; }
+  else { sb.style.display='none'; ib.style.display='block'; }
+}
+function saveWaNumber(){
+  const val = document.getElementById('waPhoneInput').value.trim().replace(/\s+/g,'');
+  if(!val){ showToast('Enter a phone number','err'); return; }
+  if(!/^\+?\d{7,15}$/.test(val)){ showToast('Invalid number — include country code e.g. +919876543210','err'); return; }
+  waPhone = val.startsWith('+')?val.slice(1):val;
+  localStorage.setItem('waPhone',waPhone);
+  renderWaSection();
+  showToast('✅ WhatsApp number saved!','ok');
+  addAlertLog('📱 WhatsApp number saved: +'+waPhone);
+}
+function editWaNumber(){ document.getElementById('waSavedBanner').style.display='none'; document.getElementById('waInputBox').style.display='block'; document.getElementById('waPhoneInput').value='+'+waPhone; }
+
+function buildAlertText(type){
+  const today = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  let msg = `🥦 Smart Expiry Tracker Alert\n📅 ${today}\n\n`;
+  if(type==='expired'||type==='all'){
+    if(expired.length){ msg+='🚨 EXPIRED:\n'; expired.forEach(i=>{ const dl=daysLeft(i.expiry); msg+=`• ${i.name} (${i.qty}) — ${Math.abs(dl)}d ago\n`; }); msg+='\n'; }
+  }
+  if(type==='soon'||type==='all'){
+    if(soon.length){ msg+='⚠️ EXPIRING SOON (3 days):\n'; soon.forEach(i=>{ const dl=daysLeft(i.expiry); msg+=`• ${i.name} (${i.qty}) — ${dl===0?'today':dl+'d left'}\n`; }); msg+='\n'; }
+  }
+  if(type==='all'){
+    const fresh = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>3; });
+    if(fresh.length){ msg+='✅ FRESH:\n'; fresh.forEach(i=>{ msg+=`• ${i.name} (${i.qty})\n`; }); }
+  }
+  msg += '\n_Sent from Smart Expiry Tracker_';
+  return msg;
+}
+
+function sendWaAlertNow(type){
+  if(!waPhone){ showToast('Save your WhatsApp number first!','err'); return; }
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  if(type==='expired'&&!expired.length){ showToast('No expired items!','ok'); return; }
+  if(type==='soon'&&!soon.length){ showToast('No items expiring soon!','ok'); return; }
+  if(type==='all'&&!trackerItems.length){ showToast('No items in tracker!','err'); return; }
+  window.open('https://wa.me/'+waPhone+'?text='+encodeURIComponent(buildAlertText(type)),'_blank');
+  addAlertLog('📲 WhatsApp alert opened: '+type);
+  showToast('📲 WhatsApp opened — tap Send!','ok');
+}
+
+// ══════════════════════════════════════════
+//  FREE SMS via EMAIL GATEWAY
+// ══════════════════════════════════════════
+function renderSmsSection(){
+  document.getElementById('smsPhoneInput').addEventListener('input', updateSmsPreview);
+  document.getElementById('smsCarrierSelect').addEventListener('change', updateSmsPreview);
+  const sb = document.getElementById('smsSavedBanner');
+  const ib = document.getElementById('smsPhoneInput').parentElement.parentElement;
+  if(smsGateway){
+    document.getElementById('smsSavedVal').textContent = smsGateway;
+    sb.style.display = 'flex';
+  }
+}
+function updateSmsPreview(){
+  const phone   = document.getElementById('smsPhoneInput').value.trim().replace(/\D/g,'');
+  const carrier = document.getElementById('smsCarrierSelect').value;
+  const preview = document.getElementById('smsGatewayPreview');
+  if(phone && carrier) preview.textContent = phone+carrier;
+  else preview.textContent = '—';
+}
+function saveSmsGateway(){
+  const phone   = document.getElementById('smsPhoneInput').value.trim().replace(/\D/g,'');
+  const carrier = document.getElementById('smsCarrierSelect').value;
+  if(!phone||!carrier){ showToast('Enter phone number and select carrier','err'); return; }
+  smsGateway = phone+carrier;
+  localStorage.setItem('smsGateway', smsGateway);
+  document.getElementById('smsSavedVal').textContent = smsGateway;
+  document.getElementById('smsSavedBanner').style.display = 'flex';
+  showToast('✅ SMS gateway saved: '+smsGateway,'ok');
+  addAlertLog('💬 SMS gateway saved: '+smsGateway);
+}
+function editSmsGateway(){ document.getElementById('smsSavedBanner').style.display='none'; }
+
+function sendSmsNow(type){
+  if(!smsGateway){ showToast('Save your SMS gateway first!','err'); return; }
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  if(type==='expired'&&!expired.length){ showToast('No expired items!','ok'); return; }
+  if(type==='soon'&&!soon.length){ showToast('No items expiring soon!','ok'); return; }
+  const subject = 'Expiry Alert — Smart Tracker';
+  const body    = buildAlertText(type);
+  const mailto  = `mailto:${smsGateway}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto,'_blank');
+  addAlertLog('💬 SMS (email gateway) opened: '+type+' → '+smsGateway);
+  showToast('📧 Email app opened — tap Send to deliver SMS!','ok');
+}
+
+// ══════════════════════════════════════════
+//  EMAIL ALERTS
+// ══════════════════════════════════════════
+function renderEmailSection(){
+  const sb = document.getElementById('emailSavedBanner');
+  const ib = document.getElementById('emailInputBox');
+  if(alertEmail){ document.getElementById('emailSavedVal').textContent=alertEmail; sb.style.display='flex'; ib.style.display='none'; }
+  else { sb.style.display='none'; ib.style.display='block'; }
+}
+function saveEmail(){
+  const val = document.getElementById('emailInput').value.trim();
+  if(!val||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){ showToast('Enter a valid email address','err'); return; }
+  alertEmail = val;
+  localStorage.setItem('alertEmail', alertEmail);
+  renderEmailSection();
+  showToast('✅ Email saved!','ok');
+  addAlertLog('📧 Alert email saved: '+alertEmail);
+}
+function editEmail(){ document.getElementById('emailSavedBanner').style.display='none'; document.getElementById('emailInputBox').style.display='block'; document.getElementById('emailInput').value=alertEmail; }
+
+function sendEmailNow(type){
+  if(!alertEmail){ showToast('Save your email address first!','err'); return; }
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  if(type==='expired'&&!expired.length){ showToast('No expired items!','ok'); return; }
+  if(type==='soon'&&!soon.length){ showToast('No items expiring soon!','ok'); return; }
+  const subject = '🥦 Expiry Alert — '+new Date().toLocaleDateString('en-IN');
+  const body    = buildAlertText(type);
+  const mailto  = `mailto:${alertEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto,'_blank');
+  addAlertLog('📧 Email alert opened: '+type+' → '+alertEmail);
+  showToast('📧 Email app opened — tap Send!','ok');
+}
+
+// ══════════════════════════════════════════
+//  ALERT LOG
+// ══════════════════════════════════════════
+function addAlertLog(msg){
+  alertLog.unshift({time:new Date().toLocaleString('en-IN'),msg});
+  if(alertLog.length>30) alertLog=alertLog.slice(0,30);
+  localStorage.setItem('alertLog',JSON.stringify(alertLog));
+}
+function renderAlertLog(){
+  const box = document.getElementById('alertLog');
+  if(!alertLog.length){ box.innerHTML='<div style="color:var(--muted);font-size:.83rem;text-align:center;padding:16px 0;">No alerts sent yet</div>'; return; }
+  box.innerHTML = alertLog.map(l=>`<div class="log-item"><div class="log-time">${l.time}</div><div class="log-msg">${l.msg}</div></div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function copyText(t){ navigator.clipboard.writeText(t).then(()=>showToast('Copied: '+t,'ok')); }
+function showToast(msg, type='ok'){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast '+(type==='ok'?'tok':type==='err'?'terr':'tinfo');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3800);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderManualTable();
+renderTracker();
+if(autoAlertEnabled) startAlertScheduler();
+</script>
+</body>
+</html>
