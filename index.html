@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Expiry Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e13;--surface:#111720;--surface2:#1a2230;--border:#252f3e;
+  --accent:#00e5a0;--accent2:#ff6b35;--warn:#ffd60a;--danger:#ff4757;
+  --text:#e8f0f8;--muted:#6b7a8d;--radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 60% 40% at 15% 10%,rgba(0,229,160,.07) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 40% at 85% 90%,rgba(255,107,53,.05) 0%,transparent 60%);
+  pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:20px 16px 80px;}
+header{text-align:center;padding:36px 0 28px;}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;}
+.logo-icon{font-size:2.6rem;filter:drop-shadow(0 0 20px rgba(0,229,160,.6));}
+header h1{font-family:'Syne',sans-serif;font-size:clamp(1.9rem,4vw,2.9rem);font-weight:800;letter-spacing:-1.5px;
+  background:linear-gradient(130deg,var(--accent) 0%,#00c4d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+header p{color:var(--muted);font-size:.9rem;margin-top:4px;}
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto;}
+.tab-btn{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px 18px;
+  border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:9px;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--accent);color:#0a0e13;}
+.tab-btn:hover:not(.active){color:var(--text);background:var(--surface2);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;}
+.card-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:14px;color:var(--accent);display:flex;align-items:center;gap:8px;}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 24px;
+  text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;background:var(--surface2);}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(0,229,160,.05);}
+.upload-zone h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:5px;}
+.upload-zone p{color:var(--muted);font-size:.83rem;}
+.upload-btn-label{display:inline-block;margin-top:14px;background:var(--accent);color:#0a0e13;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;padding:10px 22px;border-radius:9px;cursor:pointer;transition:all .2s;}
+.upload-btn-label:hover{background:#00ffb3;transform:translateY(-1px);}
+.upload-icon{font-size:2.8rem;margin-bottom:10px;}
+#billInput,#changeInput{display:none;}
+.preview-box{display:none;margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.preview-box img{max-width:100%;max-height:300px;width:100%;object-fit:contain;display:block;background:#0d1520;}
+.preview-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);}
+.prev-name{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;}
+.btn{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;padding:10px 20px;
+  border:none;border-radius:9px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:var(--accent);color:#0a0e13;}
+.btn-primary:hover{background:#00ffb3;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,229,160,.35);}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:rgba(255,71,87,.12);color:var(--danger);border:1px solid rgba(255,71,87,.25);}
+.btn-danger:hover{background:rgba(255,71,87,.22);}
+.btn-sm{padding:6px 13px;font-size:.78rem;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:.88rem;}
+thead th{background:var(--surface2);padding:11px 14px;text-align:left;
+  font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;}
+tbody tr{border-top:1px solid var(--border);transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+tbody td{padding:10px 14px;vertical-align:middle;}
+input[type="date"],input[type="number"],input[type="text"],input[type="tel"],input[type="email"],select,textarea{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:7px 11px;font-size:.86rem;font-family:'DM Sans',sans-serif;
+  outline:none;transition:border .2s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:80px;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dot-ok{background:var(--accent);box-shadow:0 0 6px rgba(0,229,160,.5);}
+.dot-warn{background:var(--warn);box-shadow:0 0 6px rgba(255,214,10,.5);}
+.dot-danger{background:var(--danger);box-shadow:0 0 6px rgba(255,71,87,.5);}
+.dot-none{background:var(--muted);}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;text-align:center;}
+.stat-num{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;}
+.stat-label{color:var(--muted);font-size:.75rem;margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
+.stat-ok .stat-num{color:var(--accent);}
+.stat-warn .stat-num{color:var(--warn);}
+.stat-danger .stat-num{color:var(--danger);}
+.alert-banner{border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;font-size:.87rem;line-height:1.5;}
+.alert-danger{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);color:#ff8a94;}
+.alert-warn{background:rgba(255,214,10,.07);border:1px solid rgba(255,214,10,.25);color:#ffd60a;}
+.alert-ok{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.25);color:var(--accent);}
+.alert-info{background:rgba(0,188,212,.06);border:1px solid rgba(0,188,212,.2);color:#4dd9f0;font-size:.82rem;line-height:1.7;border-radius:10px;padding:12px 16px;}
+.ocr-wrap{display:none;margin-top:14px;}
+.ocr-bar-bg{background:var(--surface2);border-radius:999px;height:8px;overflow:hidden;margin:8px 0 4px;}
+.ocr-bar{height:100%;background:linear-gradient(90deg,var(--accent),#00c4d4);border-radius:999px;transition:width .4s;width:0%;}
+.ocr-txt{font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:6px;}
+.ocr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.ocr-chip{background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.18);border-radius:8px;padding:3px 10px;font-size:.78rem;color:var(--accent);}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:999px;cursor:pointer;transition:.2s;}
+.toggle input:checked+.toggle-track{background:var(--accent);}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:.2s;}
+.toggle input:checked+.toggle-track::after{transform:translateX(20px);}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin:12px 0;}
+.product-chip{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:11px 13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;user-select:none;}
+.product-chip.selected{border-color:var(--accent);background:rgba(0,229,160,.08);}
+.product-chip:hover:not(.selected){border-color:var(--muted);}
+.chip-name{font-size:.85rem;font-weight:500;}
+.chip-qty{font-size:.73rem;color:var(--muted);}
+.product-chip.selected .chip-name{color:var(--accent);}
+.recipe-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+.form-group label{display:block;font-size:.79rem;color:var(--muted);margin-bottom:5px;font-weight:500;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;transition:color .15s;padding:4px 6px;}
+.del-btn:hover{color:var(--danger);}
+.action-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:14px;}
+.empty-state{text-align:center;padding:40px 24px;color:var(--muted);}
+.empty-state p{font-size:.87rem;}
+.yt-suggestions{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:16px;}
+.yt-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s,transform .2s;}
+.yt-card:hover{border-color:rgba(255,0,0,.5);transform:translateY(-2px);}
+.yt-card-title{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);}
+.yt-card-query{font-size:.76rem;color:var(--muted);line-height:1.5;}
+.yt-open-btn{display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,0,0,.12);border:1px solid rgba(255,0,0,.35);color:#ff6b6b;border-radius:8px;padding:9px 14px;font-size:.8rem;font-weight:700;text-decoration:none;transition:all .2s;font-family:'Syne',sans-serif;width:100%;}
+.yt-open-btn:hover{background:rgba(255,0,0,.25);}
+.selected-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;}
+.sel-tag{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);font-size:.76rem;padding:3px 10px;border-radius:999px;}
+
+/* ── Alerts tab ── */
+.notif-hero{background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,196,212,.05));border:1px solid rgba(0,229,160,.25);border-radius:var(--radius);padding:24px;margin-bottom:16px;}
+.notif-hero-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.notif-hero-sub{font-size:.84rem;color:var(--muted);line-height:1.65;margin-bottom:16px;}
+.notif-status-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:5px 14px;font-size:.78rem;font-weight:700;font-family:'Syne',sans-serif;}
+.ns-granted{background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);color:var(--accent);}
+.ns-denied{background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--danger);}
+.ns-default{background:rgba(107,122,141,.1);border:1px solid rgba(107,122,141,.3);color:var(--muted);}
+
+/* Schedule card */
+.sched-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.sched-card-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--warn);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.sched-card-sub{font-size:.8rem;color:var(--muted);margin-bottom:16px;line-height:1.55;}
+.sched-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.sched-status-on{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--accent);font-size:.76rem;padding:5px 14px;border-radius:999px;display:inline-block;margin-top:10px;font-family:'Syne',sans-serif;font-weight:700;}
+.sched-status-off{background:rgba(107,122,141,.1);border:1px solid rgba(107,122,141,.25);color:var(--muted);font-size:.76rem;padding:5px 14px;border-radius:999px;display:inline-block;margin-top:10px;font-family:'Syne',sans-serif;font-weight:700;}
+
+/* How it works box */
+.how-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:16px;}
+.how-title{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;color:var(--muted);margin-bottom:10px;}
+.how-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;font-size:.8rem;color:var(--muted);line-height:1.55;}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#0a0e13;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;flex-shrink:0;margin-top:1px;}
+
+/* Timeline strip */
+.timeline-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0;}
+.tl-cell{border-radius:10px;padding:12px 10px;text-align:center;border:1px solid var(--border);}
+.tl-day{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;}
+.tl-label{font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+.tl-3{background:rgba(255,214,10,.07);border-color:rgba(255,214,10,.25);}
+.tl-3 .tl-day{color:var(--warn);}
+.tl-2{background:rgba(255,107,53,.07);border-color:rgba(255,107,53,.25);}
+.tl-2 .tl-day{color:#ff6b35;}
+.tl-1{background:rgba(255,71,87,.08);border-color:rgba(255,71,87,.25);}
+.tl-1 .tl-day{color:var(--danger);}
+.tl-0{background:rgba(255,71,87,.16);border-color:rgba(255,71,87,.5);}
+.tl-0 .tl-day{color:var(--danger);}
+
+/* Alert log */
+.log-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;margin-bottom:7px;font-size:.81rem;border-left:3px solid var(--accent);}
+.log-time{color:var(--muted);font-size:.72rem;}
+.log-msg{color:var(--text);margin-top:3px;line-height:1.5;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:10px 22px;border-radius:999px;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;
+  z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.4);pointer-events:none;
+  max-width:92vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  animation:tIn .3s ease,tOut .4s ease 3.2s forwards;}
+.tok{background:var(--accent);color:#0a0e13;}
+.terr{background:var(--danger);color:#fff;}
+.tinfo{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+@keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes tOut{to{opacity:0}}
+@media(max-width:640px){.stats-row{grid-template-columns:1fr 1fr;}.recipe-options{grid-template-columns:1fr;}.timeline-strip{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo-row"><span class="logo-icon">🥦</span><h1>Smart Expiry Tracker</h1></div>
+  <p>Track freshness · Cook smart · Waste nothing</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('scan',this)">📋 Add Items</button>
+  <button class="tab-btn" onclick="switchTab('tracker',this)">📊 Tracker</button>
+  <button class="tab-btn" onclick="switchTab('recipes',this)">🍳 Recipes</button>
+  <button class="tab-btn" onclick="switchTab('alerts',this)">🔔 Alerts</button>
+</div>
+
+<!-- ══ ADD ITEMS ══ -->
+<div id="tab-scan" class="tab-panel active">
+  <div class="card">
+    <div class="card-title">📷 Upload Grocery Bill — OCR Scanner</div>
+    <div class="upload-zone" id="uploadZone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="upload-icon">🧾</div>
+      <h3>Upload Grocery Bill / Receipt</h3>
+      <p>JPG, PNG, WEBP supported · scans locally in browser</p>
+      <label class="upload-btn-label" for="billInput">📂 Choose File</label>
+      <input type="file" id="billInput" accept="image/*">
+    </div>
+    <div class="preview-box" id="previewBox">
+      <img id="previewImg" alt="bill">
+      <div class="preview-bar">
+        <span class="prev-name" id="prevName"></span>
+        <div style="display:flex;gap:8px;">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;" for="changeInput">🔄 Change</label>
+          <input type="file" id="changeInput" accept="image/*">
+          <button class="btn btn-danger btn-sm" onclick="removeImage()">✕ Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="ocr-wrap" id="ocrWrap">
+      <div class="ocr-txt" id="ocrTxt">Loading OCR engine…</div>
+      <div class="ocr-bar-bg"><div class="ocr-bar" id="ocrBar"></div></div>
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn btn-danger btn-sm" onclick="cancelOCR()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="ocr-chips" id="ocrChips"></div>
+    <div class="alert-info" id="ocrTip" style="display:none;margin-top:10px;">
+      💡 <strong>Tips:</strong> Use clear, well-lit photos. Printed receipts work best. Edit item names or quantities directly in the table below.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">✏️ Grocery Items</div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">Scanned items appear here. Set expiry dates, then tap <strong>Save to Tracker</strong>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item Name</th><th>Qty / Unit</th><th>Expiry Date</th><th></th></tr></thead>
+        <tbody id="manualBody"></tbody>
+      </table>
+    </div>
+    <div id="manualEmpty" style="text-align:center;padding:24px 0;">
+      <div style="font-size:2rem;margin-bottom:6px;">📝</div>
+      <p style="color:var(--muted);font-size:.84rem;">Upload a bill above, or click <strong style="color:var(--text)">+ Add Row</strong></p>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-secondary btn-sm" onclick="addRow()">+ Add Row</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadDemo()">✨ Demo Data</button>
+      <button class="btn btn-primary" onclick="saveToTracker()">💾 Save to Tracker</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TRACKER ══ -->
+<div id="tab-tracker" class="tab-panel">
+  <div class="stats-row">
+    <div class="stat-box stat-ok"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total</div></div>
+    <div class="stat-box stat-ok"><div class="stat-num" id="s-fresh">0</div><div class="stat-label">Fresh</div></div>
+    <div class="stat-box stat-warn"><div class="stat-num" id="s-soon">0</div><div class="stat-label">Expiring Soon</div></div>
+    <div class="stat-box stat-danger"><div class="stat-num" id="s-exp">0</div><div class="stat-label">Expired</div></div>
+  </div>
+  <div id="alertsBox"></div>
+  <div class="card">
+    <div class="card-title">📋 Grocery Inventory</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Item</th><th>Qty</th><th>Expiry Date</th><th>Days Left</th><th></th></tr></thead>
+        <tbody id="trackerBody"></tbody>
+      </table>
+    </div>
+    <div class="action-row" style="margin-top:14px;">
+      <button class="btn btn-secondary btn-sm" onclick="addTrackerRow()">+ Add Item</button>
+      <button class="btn btn-danger btn-sm" onclick="clearExpired()">🗑️ Remove Expired</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RECIPES ══ -->
+<div id="tab-recipes" class="tab-panel">
+  <div class="card">
+    <div class="card-title">🛒 Select Ingredients You Have</div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:10px;">Tap items from your tracker to select them:</p>
+    <div class="products-grid" id="productsGrid">
+      <div class="empty-state"><p>Add items in the Tracker first</p></div>
+    </div>
+  </div>
+  <div class="card" id="recipeStep2" style="display:none;">
+    <div class="card-title">⚙️ Preferences</div>
+    <div class="recipe-options">
+      <div class="form-group"><label>👥 People</label>
+        <select id="memberCount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option></select>
+      </div>
+      <div class="form-group"><label>🍽️ Meal</label>
+        <select id="mealType"><option value="breakfast">☀️ Breakfast</option><option value="lunch">🌤️ Lunch</option><option value="snacks">🌆 Snacks</option><option value="dinner" selected>🌙 Dinner</option></select>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.79rem;color:var(--muted);margin-bottom:8px;font-weight:500;">🔍 Your selected ingredients:</div>
+      <div class="selected-tags" id="selectedTagsDisplay"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="openYouTubeSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Search on YouTube
+      </button>
+      <button class="btn btn-secondary" onclick="openMultipleSearches()">🎯 Open 3 Recipe Ideas</button>
+    </div>
+  </div>
+  <div id="ytSuggestionsOut"></div>
+</div>
+
+<!-- ══ ALERTS ══ -->
+<div id="tab-alerts" class="tab-panel">
+
+  <!-- Browser notification hero -->
+  <div class="notif-hero">
+    <div class="notif-hero-title">🔔 Browser Notifications</div>
+    <div class="notif-hero-sub">
+      Get automatic pop-up reminders when your items are about to expire. The app sends notifications at
+      <strong style="color:var(--warn);">3 days · 2 days · 1 day before</strong> expiry and again
+      <strong style="color:var(--danger);">on the expiry day itself</strong>.
+    </div>
+    <div id="notifStatusBadge"></div>
+    <div style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" id="btnGrant" onclick="requestNotifPermission()">🔔 Enable Notifications</button>
+      <button class="btn btn-secondary btn-sm" id="btnTest" style="display:none;" onclick="runManualCheck()">🧪 Check &amp; Notify Now</button>
+    </div>
+  </div>
+
+  <!-- Notification timeline -->
+  <div class="card">
+    <div class="card-title">📅 Notification Schedule</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:4px;">For every item in your tracker, you'll get a notification on each of these days:</p>
+    <div class="timeline-strip">
+      <div class="tl-cell tl-3"><div class="tl-day">3</div><div class="tl-label">days before<br>expiry</div></div>
+      <div class="tl-cell tl-2"><div class="tl-day">2</div><div class="tl-label">days before<br>expiry</div></div>
+      <div class="tl-cell tl-1"><div class="tl-day">1</div><div class="tl-label">day before<br>expiry</div></div>
+      <div class="tl-cell tl-0"><div class="tl-day">0</div><div class="tl-label">expiry day<br>itself</div></div>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Items already expired also show a separate 🚨 alert.</p>
+  </div>
+
+  <!-- Scheduler card -->
+  <div class="sched-card">
+    <div class="sched-card-title">⏰ Daily Auto-Check Scheduler</div>
+    <div class="sched-card-sub">Set a daily time — the app automatically checks all items and fires pop-up notifications for anything expiring within 3 days or already expired. <strong style="color:var(--warn);">Keep this browser tab open</strong> at the scheduled time.</div>
+    <div class="sched-row">
+      <label style="font-size:.82rem;color:var(--muted);">Alert Time:</label>
+      <input type="time" id="alertTimeInput" value="09:00" style="width:130px;" onchange="updateSchedulerInfo()">
+      <select id="alertDaysSelect" style="width:180px;" onchange="updateSchedulerInfo()">
+        <option value="daily">Every Day</option>
+        <option value="weekdays">Weekdays Only</option>
+        <option value="weekends">Weekends Only</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="autoAlertToggle" onchange="toggleAutoAlert()"><div class="toggle-track"></div></label>
+    </div>
+    <div id="autoAlertStatusBadge"></div>
+    <div id="nextAlertInfo" style="font-size:.78rem;color:var(--muted);margin-top:8px;"></div>
+
+    <div class="how-box">
+      <div class="how-title">ℹ️ How It Works</div>
+      <div class="how-step"><div class="step-num">1</div><span>Enable browser notifications using the button above</span></div>
+      <div class="how-step"><div class="step-num">2</div><span>Set a daily time and toggle the scheduler on</span></div>
+      <div class="how-step"><div class="step-num">3</div><span>At that time each day, the app fires a pop-up for every item expiring in 3, 2, 1 day or on that day</span></div>
+      <div class="how-step"><div class="step-num">4</div><span>Each item gets its own notification so nothing gets buried — also fires for already-expired items</span></div>
+    </div>
+  </div>
+
+  <!-- Alert log -->
+  <div class="card">
+    <div class="card-title">📋 Notification History</div>
+    <div id="alertLog">
+      <div style="color:var(--muted);font-size:.83rem;text-align:center;padding:16px 0;">No notifications sent yet</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let manualRows = [];
+let trackerItems = JSON.parse(localStorage.getItem('trackerItems')||'[]');
+let selectedIndices = new Set();
+let ocrWorker = null;
+let ocrCancelled = false;
+let ocrRunning = false;
+let alertLogData = JSON.parse(localStorage.getItem('alertLog')||'[]');
+let autoAlertEnabled = localStorage.getItem('autoAlert')==='1';
+let autoAlertInterval = null;
+
+// ══════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tracker') renderTracker();
+  if(id==='recipes'){ selectedIndices.clear(); renderProductsGrid(); }
+  if(id==='alerts'){ renderAlertsTab(); }
+}
+
+// ══════════════════════════════════════════
+//  UPLOAD — single listener, no inline onchange
+// ══════════════════════════════════════════
+document.getElementById('billInput').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(f) processFile(f);
+  e.target.value = '';
+});
+document.getElementById('changeInput').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(f) processFile(f);
+  e.target.value = '';
+});
+
+function onDragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('dragover'); }
+function onDragLeave(){ document.getElementById('uploadZone').classList.remove('dragover'); }
+function onDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if(f) processFile(f);
+}
+
+function processFile(file){
+  if(!file.type.startsWith('image/')){
+    showToast('Please upload an image file (JPG, PNG, WEBP)','err'); return;
+  }
+  if(ocrRunning){ showToast('OCR already running — please wait…','err'); return; }
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const src = ev.target.result;
+    document.getElementById('previewImg').src = src;
+    document.getElementById('prevName').textContent = file.name;
+    document.getElementById('previewBox').style.display = 'block';
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('ocrChips').innerHTML = '';
+    document.getElementById('ocrTip').style.display = 'none';
+    runOCR(src);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage(){
+  document.getElementById('previewBox').style.display = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('previewImg').src = '';
+  document.getElementById('ocrChips').innerHTML = '';
+  document.getElementById('ocrTip').style.display = 'none';
+  document.getElementById('ocrWrap').style.display = 'none';
+  cancelOCR();
+}
+
+// ══════════════════════════════════════════
+//  OCR
+// ══════════════════════════════════════════
+async function runOCR(imgSrc){
+  if(ocrRunning) return;
+  ocrRunning = true;
+  ocrCancelled = false;
+  const wrap = document.getElementById('ocrWrap');
+  const bar  = document.getElementById('ocrBar');
+  const txt  = document.getElementById('ocrTxt');
+  wrap.style.display = 'block';
+  bar.style.width = '0%';
+  txt.textContent = 'Loading OCR engine…';
+  try {
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if(ocrCancelled) return;
+        if(m.status==='loading tesseract core') txt.textContent='Loading OCR core…';
+        else if(m.status==='initializing tesseract') txt.textContent='Initialising…';
+        else if(m.status==='loading language traineddata') txt.textContent='Loading language data…';
+        else if(m.status==='recognizing text') txt.textContent='Scanning bill… '+Math.round((m.progress||0)*100)+'%';
+        if(m.progress!==undefined) bar.style.width=(m.progress*100)+'%';
+      }
+    });
+    ocrWorker = worker;
+    if(ocrCancelled){ await worker.terminate(); ocrRunning=false; return; }
+    const {data} = await worker.recognize(imgSrc);
+    await worker.terminate();
+    ocrWorker = null;
+    ocrRunning = false;
+    if(ocrCancelled) return;
+    wrap.style.display = 'none';
+    parseOCRText(data.text);
+  } catch(err){
+    ocrRunning = false;
+    if(!ocrCancelled){
+      document.getElementById('ocrWrap').style.display = 'none';
+      showToast('OCR failed: '+err.message,'err');
+    }
+  }
+}
+
+function cancelOCR(){
+  ocrCancelled = true;
+  ocrRunning = false;
+  if(ocrWorker){ ocrWorker.terminate().catch(()=>{}); ocrWorker=null; }
+  document.getElementById('ocrWrap').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+//  PARSE OCR TEXT
+// ══════════════════════════════════════════
+function parseOCRText(text){
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  const skipWords = /^(total|subtotal|tax|gst|vat|discount|amount|mrp|price|rs|inr|₹|thank|welcome|bill|invoice|receipt|date|time|cash|change|due|balance|paid|no\.|sr\.|sl\.|item|qty|unit|rate|hsn|gstin)/i;
+  const pricePattern = /\d+[.,]\d{2,3}$/;
+  const qtyPatterns = [
+    /^(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|l|ltr|litre|pcs?|nos?|pack|packet|box|bottle|bag|dozen|doz)\b/i,
+    /\b(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|l|ltr|litre|pcs?|nos?|pack|packet|box|bottle|bag|dozen|doz)\b/i,
+    /\bx\s*(\d+)\b/i,
+    /\b(\d+)\s*x\b/i,
+    /^(\d+)\s+/,
+  ];
+  const extracted = [];
+  lines.forEach(line=>{
+    if(skipWords.test(line.trim())) return;
+    if(pricePattern.test(line.trim())) return;
+    if(/^\d+(\.\d+)?$/.test(line.trim())) return;
+    let clean = line.replace(/[\d,]+\.\d{2,3}\s*$/, '').replace(/₹\s*[\d.,]+/g,'').trim();
+    if(clean.length<2) return;
+    let qty='', unit='';
+    for(const pat of qtyPatterns){
+      const m = clean.match(pat);
+      if(m){ qty=m[1]; unit=m[2]||''; clean=clean.replace(m[0],'').trim(); break; }
+    }
+    clean = clean.replace(/[^a-zA-Z0-9\s\-\/&().]/g,' ').replace(/\s+/g,' ').trim();
+    if(clean.length<2) return;
+    const name = clean.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+    extracted.push({name, qty: qty?(qty+(unit?' '+unit:'')):'1'});
+  });
+  if(extracted.length===0){
+    showToast('Could not detect items. Try a clearer image or add manually.','err');
+    document.getElementById('ocrTip').style.display='block';
+    return;
+  }
+  const chipBox = document.getElementById('ocrChips');
+  chipBox.innerHTML = extracted.map(e=>`<span class="ocr-chip">✓ ${escHtml(e.name)}</span>`).join('');
+  document.getElementById('ocrTip').style.display = 'block';
+  extracted.forEach(item => manualRows.push({name:item.name, qty:item.qty, expiry:''}));
+  renderManualTable();
+  showToast(`✅ Detected ${extracted.length} item(s)! Set expiry dates below.`,'ok');
+}
+
+// ══════════════════════════════════════════
+//  MANUAL TABLE
+// ══════════════════════════════════════════
+function renderManualTable(){
+  const tbody = document.getElementById('manualBody');
+  const empty = document.getElementById('manualEmpty');
+  if(!manualRows.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = manualRows.map((r,i)=>`
+    <tr>
+      <td><input type="text" value="${escHtml(r.name)}" oninput="manualRows[${i}].name=this.value" placeholder="Item name"></td>
+      <td><input type="text" value="${escHtml(r.qty)}" oninput="manualRows[${i}].qty=this.value" placeholder="e.g. 1 kg" style="max-width:90px;"></td>
+      <td><input type="date" value="${r.expiry}" onchange="manualRows[${i}].expiry=this.value"></td>
+      <td><button class="del-btn" onclick="removeManualRow(${i})">🗑</button></td>
+    </tr>`).join('');
+}
+
+function addRow(){ manualRows.push({name:'',qty:'1',expiry:''}); renderManualTable(); }
+function removeManualRow(i){ manualRows.splice(i,1); renderManualTable(); }
+
+function saveToTracker(){
+  const valid = manualRows.filter(r=>r.name.trim());
+  if(!valid.length){ showToast('Add at least one item name','err'); return; }
+  valid.forEach(r=>{
+    trackerItems.push({
+      id: String(Date.now())+String(Math.floor(Math.random()*1e6)),
+      name:r.name.trim(), qty:r.qty||'1', expiry:r.expiry, added:new Date().toISOString()
+    });
+  });
+  saveTracker();
+  manualRows = [];
+  renderManualTable();
+  showToast(`💾 ${valid.length} item(s) saved to tracker!`,'ok');
+}
+
+function loadDemo(){
+  const today = new Date();
+  const d = n=>{ const x=new Date(today); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
+  manualRows=[
+    {name:'Tomatoes',qty:'500 g',expiry:d(2)},
+    {name:'Spinach',qty:'250 g',expiry:d(1)},
+    {name:'Milk',qty:'1 L',expiry:d(3)},
+    {name:'Bread',qty:'1 pack',expiry:d(5)},
+    {name:'Eggs',qty:'12 nos',expiry:d(14)},
+    {name:'Onions',qty:'1 kg',expiry:d(20)},
+    {name:'Yogurt',qty:'400 g',expiry:d(-1)},
+  ];
+  renderManualTable();
+  showToast('✨ Demo data loaded!','ok');
+}
+
+// ══════════════════════════════════════════
+//  TRACKER
+// ══════════════════════════════════════════
+function saveTracker(){ localStorage.setItem('trackerItems',JSON.stringify(trackerItems)); }
+
+function daysLeft(expiry){
+  if(!expiry) return null;
+  const exp = new Date(expiry); exp.setHours(23,59,59);
+  return Math.round((exp - new Date())/(1000*60*60*24));
+}
+
+function renderTracker(){
+  const tbody = document.getElementById('trackerBody');
+  if(!trackerItems.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);">No items yet — add from the Add Items tab</td></tr>`;
+    updateStats(); return;
+  }
+  const sorted = [...trackerItems].sort((a,b)=>{
+    if(!a.expiry) return 1; if(!b.expiry) return -1;
+    return new Date(a.expiry)-new Date(b.expiry);
+  });
+  tbody.innerHTML = sorted.map(item=>{
+    const dl = daysLeft(item.expiry);
+    let dotClass='dot-none', daysText='—';
+    if(dl!==null){
+      if(dl<0){ dotClass='dot-danger'; daysText=`<span style="color:var(--danger);font-weight:700;">Expired ${Math.abs(dl)}d ago</span>`; }
+      else if(dl===0){ dotClass='dot-danger'; daysText=`<span style="color:var(--danger);font-weight:700;">Expires today!</span>`; }
+      else if(dl<=3){ dotClass='dot-warn'; daysText=`<span style="color:var(--warn);font-weight:700;">${dl}d left</span>`; }
+      else{ dotClass='dot-ok'; daysText=`<span style="color:var(--accent);">${dl}d left</span>`; }
+    }
+    return `<tr>
+      <td><span class="dot ${dotClass}"></span></td>
+      <td><input type="text" value="${escHtml(item.name)}" onchange="updateTrackerField('${item.id}','name',this.value)" style="background:transparent;border:none;padding:0;font-size:.88rem;color:var(--text);width:100%;min-width:90px;"></td>
+      <td><input type="text" value="${escHtml(item.qty||'')}" onchange="updateTrackerField('${item.id}','qty',this.value)" style="background:transparent;border:none;padding:0;font-size:.88rem;color:var(--text);width:80px;"></td>
+      <td><input type="date" value="${item.expiry||''}" onchange="updateTrackerField('${item.id}','expiry',this.value)"></td>
+      <td>${daysText}</td>
+      <td><button class="del-btn" onclick="deleteTrackerItem('${item.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+  updateStats();
+  renderAlertBanners();
+}
+
+function updateTrackerField(id,field,val){
+  const item = trackerItems.find(i=>i.id===id);
+  if(item){ item[field]=val; saveTracker(); if(field==='expiry') renderTracker(); }
+}
+function deleteTrackerItem(id){
+  trackerItems = trackerItems.filter(i=>i.id!==id);
+  saveTracker(); renderTracker();
+}
+function addTrackerRow(){
+  trackerItems.push({id:String(Date.now())+String(Math.floor(Math.random()*1e6)),name:'New Item',qty:'1',expiry:'',added:new Date().toISOString()});
+  saveTracker(); renderTracker();
+}
+function clearExpired(){
+  const before = trackerItems.length;
+  trackerItems = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl===null||dl>=0; });
+  saveTracker(); renderTracker();
+  showToast(`Removed ${before-trackerItems.length} expired item(s)`,'ok');
+}
+function updateStats(){
+  let fresh=0,soon=0,exp=0;
+  trackerItems.forEach(i=>{ const dl=daysLeft(i.expiry); if(dl===null)return; if(dl<0)exp++; else if(dl<=3)soon++; else fresh++; });
+  document.getElementById('s-total').textContent = trackerItems.length;
+  document.getElementById('s-fresh').textContent = fresh;
+  document.getElementById('s-soon').textContent  = soon;
+  document.getElementById('s-exp').textContent   = exp;
+}
+function renderAlertBanners(){
+  const box = document.getElementById('alertsBox');
+  const expired = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl<0; });
+  const soon    = trackerItems.filter(i=>{ const dl=daysLeft(i.expiry); return dl!==null&&dl>=0&&dl<=3; });
+  let html='';
+  if(expired.length) html+=`<div class="alert-banner alert-danger">🚨 <div><strong>${expired.length} item(s) expired:</strong> ${expired.map(i=>escHtml(i.name)).join(', ')}</div></div>`;
+  if(soon.length)    html+=`<div class="alert-banner alert-warn">⚠️ <div><strong>${soon.length} item(s) expiring within 3 days:</strong> ${soon.map(i=>escHtml(i.name)).join(', ')}</div></div>`;
+  if(!expired.length&&!soon.length&&trackerItems.length) html=`<div class="alert-banner alert-ok">✅ All items are fresh!</div>`;
+  box.innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+//  RECIPES
+// ══════════════════════════════════════════
+function renderProductsGrid(){
+  const grid = document.getElementById('productsGrid');
+  if(!trackerItems.length){
+    grid.innerHTML='<div class="empty-state"><p>Add items in the Tracker first</p></div>';
+    document.getElementById('recipeStep2').style.display='none'; return;
+  }
+  grid.innerHTML = trackerItems.map((item,idx)=>{
+    const sel = selectedIndices.has(idx);
+    return `<div class="product-chip${sel?' selected':''}" onclick="toggleIngredient(${idx})">
+      <div><div class="chip-name">${escHtml(item.name)}</div><div class="chip-qty">${escHtml(item.qty||'')}</div></div>
+    </div>`;
+  }).join('');
+  updateRecipeStep2();
+}
+function toggleIngredient(idx){
+  if(selectedIndices.has(idx)) selectedIndices.delete(idx); else selectedIndices.add(idx);
+  renderProductsGrid();
+}
+function updateRecipeStep2(){
+  const step2 = document.getElementById('recipeStep2');
+  if(!selectedIndices.size){ step2.style.display='none'; return; }
+  step2.style.display='block';
+  const names = trackerItems.filter((_,i)=>selectedIndices.has(i)).map(i=>i.name);
+  document.getElementById('selectedTagsDisplay').innerHTML = names.map(n=>`<span class="sel-tag">${escHtml(n)}</span>`).join('');
+}
+function getSelectedNames(){ return trackerItems.filter((_,i)=>selectedIndices.has(i)).map(i=>i.name); }
+function openYouTubeSearch(){
+  const names = getSelectedNames();
+  if(!names.length){ showToast('Select ingredients first','err'); return; }
+  window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(names.join(' ')+' '+document.getElementById('mealType').value+' recipe'),'_blank');
+}
+function openMultipleSearches(){
+  const names = getSelectedNames();
+  if(!names.length){ showToast('Select ingredients first','err'); return; }
+  const meal = document.getElementById('mealType').value;
+  const people = document.getElementById('memberCount').value;
+  const queries=[
+    names.slice(0,3).join(' ')+' '+meal+' recipe for '+people,
+    names.join(' ')+' easy '+meal,
+    'quick '+meal+' with '+names[0]+(names[1]?' and '+names[1]:''),
+  ];
+  const out = document.getElementById('ytSuggestionsOut');
+  out.innerHTML=`<div class="yt-suggestions">${queries.map((q,i)=>`
+    <div class="yt-card">
+      <div class="yt-card-title">${['🍽 Main Recipe','⚡ Quick Version','🌟 Variation'][i]}</div>
+      <div class="yt-card-query">${escHtml(q)}</div>
+      <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(q)}" target="_blank" class="yt-open-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Open on YouTube
+      </a>
+    </div>`).join('')}</div>`;
+  queries.forEach(q=>window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(q),'_blank'));
+}
+
+// ══════════════════════════════════════════
+//  ALERTS TAB — RENDER
+// ══════════════════════════════════════════
+function renderAlertsTab(){
+  renderNotifStatus();
+  document.getElementById('autoAlertToggle').checked = autoAlertEnabled;
+  updateSchedulerInfo();
+  renderAlertLogUI();
+  if(autoAlertEnabled) startAlertScheduler();
+}
+
+function renderNotifStatus(){
+  const badge    = document.getElementById('notifStatusBadge');
+  const btnGrant = document.getElementById('btnGrant');
+  const btnTest  = document.getElementById('btnTest');
+  if(!('Notification' in window)){
+    badge.innerHTML=`<span class="notif-status-badge ns-denied">❌ Not supported in this browser</span>`;
+    btnGrant.style.display='none'; return;
+  }
+  if(Notification.permission==='granted'){
+    badge.innerHTML=`<span class="notif-status-badge ns-granted">✅ Notifications enabled</span>`;
+    btnGrant.style.display='none'; btnTest.style.display='inline-flex';
+  } else if(Notification.permission==='denied'){
+    badge.innerHTML=`<span class="notif-status-badge ns-denied">🚫 Blocked — please allow in browser settings</span>`;
+    btnGrant.style.display='none'; btnTest.style.display='none';
+  } else {
+    badge.innerHTML=`<span class="notif-status-badge ns-default">⚪ Not yet enabled</span>`;
+    btnGrant.style.display='inline-flex'; btnTest.style.display='none';
+  }
+}
+
+function requestNotifPermission(){
+  Notification.requestPermission().then(p=>{
+    renderNotifStatus();
+    if(p==='granted'){
+      showToast('✅ Notifications enabled!','ok');
+      sendNotif('🥦 Smart Expiry Tracker','Notifications are active! You will be alerted when items expire.');
+      addAlertLogEntry('🔔 Browser notifications enabled');
+    } else if(p==='denied'){
+      showToast('Notifications blocked','err');
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+//  CORE NOTIFICATION LOGIC
+//  Fires for days 3, 2, 1 before expiry and day 0 (expiry day itself)
+// ══════════════════════════════════════════
+function sendNotif(title, body){
+  if(Notification.permission==='granted'){
+    new Notification(title,{
+      body,
+      icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥦</text></svg>'
+    });
+  }
+}
+
+function runExpiryNotifications(){
+  if(Notification.permission!=='granted') return;
+  const today = new Date().toDateString();
+  const sentKey = 'notifSent_'+today;
+  const alreadySent = JSON.parse(localStorage.getItem(sentKey)||'{}');
+  let count = 0;
+
+  trackerItems.forEach(item=>{
+    const dl = daysLeft(item.expiry);
+    if(dl===null) return;
+
+    // Expired items (dl < 0)
+    if(dl < 0){
+      const key = item.id+'_expired_'+today;
+      if(!alreadySent[key]){
+        sendNotif(
+          '🚨 Expired!',
+          `${item.name} (${item.qty}) expired ${Math.abs(dl)} day${Math.abs(dl)>1?'s':''} ago!`
+        );
+        alreadySent[key] = true;
+        addAlertLogEntry(`🚨 Expired alert: ${item.name}`);
+        count++;
+      }
+    }
+    // Expiry day (dl === 0)
+    else if(dl===0){
+      const key = item.id+'_day0_'+today;
+      if(!alreadySent[key]){
+        sendNotif(
+          '🔴 Expires Today!',
+          `${item.name} (${item.qty}) expires TODAY — use it now!`
+        );
+        alreadySent[key] = true;
+        addAlertLogEntry(`🔴 Expiry day alert: ${item.name}`);
+        count++;
+      }
+    }
+    // 1 day left
+    else if(dl===1){
+      const key = item.id+'_day1_'+today;
+      if(!alreadySent[key]){
+        sendNotif(
+          '⚠️ Expires Tomorrow!',
+          `${item.name} (${item.qty}) expires tomorrow — plan to use it!`
+        );
+        alreadySent[key] = true;
+        addAlertLogEntry(`⚠️ 1 day alert: ${item.name}`);
+        count++;
+      }
+    }
+    // 2 days left
+    else if(dl===2){
+      const key = item.id+'_day2_'+today;
+      if(!alreadySent[key]){
+        sendNotif(
+          '⏰ Expiring in 2 Days',
+          `${item.name} (${item.qty}) expires in 2 days.`
+        );
+        alreadySent[key] = true;
+        addAlertLogEntry(`⏰ 2 day alert: ${item.name}`);
+        count++;
+      }
+    }
+    // 3 days left
+    else if(dl===3){
+      const key = item.id+'_day3_'+today;
+      if(!alreadySent[key]){
+        sendNotif(
+          '📅 Expiring in 3 Days',
+          `${item.name} (${item.qty}) expires in 3 days.`
+        );
+        alreadySent[key] = true;
+        addAlertLogEntry(`📅 3 day alert: ${item.name}`);
+        count++;
+      }
+    }
+  });
+
+  // Save sent log for today
+  localStorage.setItem(sentKey, JSON.stringify(alreadySent));
+  // Clean up old sent keys (keep only last 7 days)
+  cleanOldNotifKeys();
+
+  if(count===0){
+    addAlertLogEntry('✅ Scheduled check: all items fresh, no alerts needed');
+  }
+  renderAlertLogUI();
+  return count;
+}
+
+function cleanOldNotifKeys(){
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+  Object.keys(localStorage).forEach(key=>{
+    if(key.startsWith('notifSent_')){
+      const dateStr = key.replace('notifSent_','');
+      if(new Date(dateStr)<cutoff) localStorage.removeItem(key);
+    }
+  });
+}
+
+// Manual "Check & Notify Now" button
+function runManualCheck(){
+  if(Notification.permission!=='granted'){
+    showToast('Enable notifications first!','err'); return;
+  }
+  if(!trackerItems.length){
+    showToast('No items in tracker!','err'); return;
+  }
+  // Clear today's sent record so manual check always fires
+  const today = new Date().toDateString();
+  localStorage.removeItem('notifSent_'+today);
+  const count = runExpiryNotifications();
+  if(count===0) showToast('✅ All items are fresh — no alerts needed!','ok');
+  else showToast(`🔔 Sent ${count} notification(s)!`,'ok');
+  renderAlertLogUI();
+}
+
+// ══════════════════════════════════════════
+//  AUTO SCHEDULER
+// ══════════════════════════════════════════
+function toggleAutoAlert(){
+  autoAlertEnabled = document.getElementById('autoAlertToggle').checked;
+  localStorage.setItem('autoAlert', autoAlertEnabled?'1':'0');
+  if(autoAlertEnabled){
+    startAlertScheduler();
+    showToast('✅ Auto-alert scheduler enabled!','ok');
+  } else {
+    stopAlertScheduler();
+    showToast('Auto-alert scheduler disabled','ok');
+  }
+  updateSchedulerInfo();
+}
+
+function startAlertScheduler(){
+  stopAlertScheduler();
+  autoAlertInterval = setInterval(checkScheduledAlert, 60000);
+  checkScheduledAlert();
+}
+function stopAlertScheduler(){
+  if(autoAlertInterval){ clearInterval(autoAlertInterval); autoAlertInterval=null; }
+}
+
+function checkScheduledAlert(){
+  if(!autoAlertEnabled) return;
+  const now = new Date();
+  const currentTime = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const scheduledTime = document.getElementById('alertTimeInput').value || '09:00';
+  const days = document.getElementById('alertDaysSelect').value;
+  const dow = now.getDay();
+  if(days==='weekdays' && (dow===0||dow===6)) return;
+  if(days==='weekends' && dow>=1 && dow<=5) return;
+  if(currentTime !== scheduledTime) return;
+  // Check if scheduler already fired at this time today
+  const lastFired = localStorage.getItem('lastSchedFired');
+  const todayKey = now.toDateString()+scheduledTime;
+  if(lastFired===todayKey) return;
+  localStorage.setItem('lastSchedFired', todayKey);
+  runExpiryNotifications();
+}
+
+function updateSchedulerInfo(){
+  const badge    = document.getElementById('autoAlertStatusBadge');
+  const nextInfo = document.getElementById('nextAlertInfo');
+  if(autoAlertEnabled){
+    const t = document.getElementById('alertTimeInput').value;
+    const d = document.getElementById('alertDaysSelect').value;
+    badge.innerHTML=`<span class="sched-status-on">✅ Scheduler on — daily at ${t} · ${d}</span>`;
+    nextInfo.textContent = `Next run at ${t} (browser tab must be open)`;
+  } else {
+    badge.innerHTML=`<span class="sched-status-off">⏸ Scheduler off — toggle to enable</span>`;
+    nextInfo.textContent='';
+  }
+}
+
+// ══════════════════════════════════════════
+//  ALERT LOG
+// ══════════════════════════════════════════
+function addAlertLogEntry(msg){
+  alertLogData.unshift({time:new Date().toLocaleString('en-IN'),msg});
+  if(alertLogData.length>50) alertLogData=alertLogData.slice(0,50);
+  localStorage.setItem('alertLog',JSON.stringify(alertLogData));
+}
+function renderAlertLogUI(){
+  const box = document.getElementById('alertLog');
+  if(!alertLogData.length){
+    box.innerHTML='<div style="color:var(--muted);font-size:.83rem;text-align:center;padding:16px 0;">No notifications sent yet</div>';
+    return;
+  }
+  box.innerHTML = alertLogData.map(l=>`<div class="log-item"><div class="log-time">${l.time}</div><div class="log-msg">${escHtml(l.msg)}</div></div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg, type='ok'){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast '+(type==='ok'?'tok':type==='err'?'terr':'tinfo');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3800);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderManualTable();
+renderTracker();
+if(autoAlertEnabled) startAlertScheduler();
+</script>
+</body>
+</html>
